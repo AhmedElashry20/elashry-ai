@@ -1,0 +1,308 @@
+{
+  "name": "elashry-ai",
+  "displayName": "Elashry AI",
+  "description": "Personal autonomous AI coding & cybersecurity agent — fully local, self-researching",
+  "version": "0.5.2",
+  "publisher": "ahmedelashry",
+  "icon": "media/logo.png",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "elashryAi.openChat",
+        "title": "Elashry AI: Open Chat",
+        "category": "Elashry AI",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "elashryAi.explainSelection",
+        "title": "Elashry AI: Explain selection",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.fixSelection",
+        "title": "Elashry AI: Fix selection",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.refactorSelection",
+        "title": "Elashry AI: Refactor selection",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.research.start",
+        "title": "Elashry AI: Start background research",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.research.stop",
+        "title": "Elashry AI: Stop background research",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.research.runOnce",
+        "title": "Elashry AI: Research one topic now",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.research.addTopic",
+        "title": "Elashry AI: Add topic to research queue",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.kb.status",
+        "title": "Elashry AI: Knowledge base status",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.kb.clear",
+        "title": "Elashry AI: Clear knowledge base",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.bulk.importCurated",
+        "title": "Elashry AI: Bulk import (curated sources)",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.bulk.importUrls",
+        "title": "Elashry AI: Bulk import (paste URLs)",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.agent.act",
+        "title": "Elashry AI: Run agent action (no model)",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.model.startServer",
+        "title": "Elashry AI: Start local model server",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.drive.signIn",
+        "title": "Elashry AI: Drive: Sign in",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.drive.signOut",
+        "title": "Elashry AI: Drive: Sign out",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.drive.uploadBundle",
+        "title": "Elashry AI: Drive: Upload bundle",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.drive.downloadCkpt",
+        "title": "Elashry AI: Drive: Download latest checkpoint",
+        "category": "Elashry AI"
+      },
+      {
+        "command": "elashryAi.skills.list",
+        "title": "Elashry AI: Skills"
+      },
+      {
+        "command": "elashryAi.skills.create",
+        "title": "Elashry AI: Create Skill"
+      },
+      {
+        "command": "elashryAi.goal.run",
+        "title": "Elashry AI: Run Goal"
+      },
+      {
+        "command": "elashryAi.goal.check",
+        "title": "Elashry AI: Check Goal Criteria"
+      },
+      {
+        "command": "elashryAi.automations.list",
+        "title": "Elashry AI: Automations"
+      },
+      {
+        "command": "elashryAi.automations.add",
+        "title": "Elashry AI: Add Automation"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "elashryAi.explainSelection",
+          "group": "elashryAi@1",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "elashryAi.fixSelection",
+          "group": "elashryAi@2",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "elashryAi.refactorSelection",
+          "group": "elashryAi@3",
+          "when": "editorHasSelection"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "elashryAi.openChat",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "command": "elashryAi.openChat",
+          "group": "navigation@1"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "elashryAi",
+          "title": "Elashry AI",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "elashryAi": [
+        {
+          "type": "webview",
+          "id": "elashryAi.chatView",
+          "name": "Chat"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Elashry AI",
+      "properties": {
+        "elashryAi.model.host": {
+          "type": "string",
+          "default": "http://127.0.0.1:20130",
+          "description": "سيرفر الموديل. الافتراضي OmniRoute محلي (127.0.0.1:20130). للموديل المحلي المتدرَّب من الصفر استخدم http://127.0.0.1:11435."
+        },
+        "elashryAi.model.chatModel": {
+          "type": "string",
+          "default": "elashry-nano",
+          "description": "Elashry model name served by model/serve.py"
+        },
+        "elashryAi.model.embedModel": {
+          "type": "string",
+          "default": "elashry-nano",
+          "description": "Elashry model used for embeddings"
+        },
+        "elashryAi.drive.clientId": {
+          "type": "string",
+          "default": "",
+          "description": "Google OAuth Client ID (Desktop app type) from console.cloud.google.com. Needed only for Drive commands."
+        },
+        "elashryAi.drive.clientSecret": {
+          "type": "string",
+          "default": "",
+          "description": "Matching Google OAuth Client Secret. Stored in plain settings; refresh token kept in encrypted secret storage."
+        },
+        "elashryAi.agent.maxIterations": {
+          "type": "number",
+          "default": 30,
+          "description": "Maximum agent tool-use iterations per task"
+        },
+        "elashryAi.agent.autoApprove": {
+          "type": "object",
+          "default": {
+            "read_file": true,
+            "list_dir": true,
+            "search": true,
+            "search_knowledge": true,
+            "web_research": true,
+            "write_file": false,
+            "edit_file": false,
+            "run_command": false
+          },
+          "description": "Auto-approve tools without confirmation"
+        },
+        "elashryAi.research.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run the background self-research loop on startup"
+        },
+        "elashryAi.research.intervalMinutes": {
+          "type": "number",
+          "default": 3,
+          "description": "Minutes between background research iterations"
+        },
+        "elashryAi.research.resultsPerTopic": {
+          "type": "number",
+          "default": 8,
+          "description": "Number of web pages to fetch per topic"
+        },
+        "elashryAi.research.maxFetchBytes": {
+          "type": "number",
+          "default": 1500000,
+          "description": "Maximum bytes to read per fetched page (PDFs allowed up to 4x this)"
+        },
+        "elashryAi.research.concurrency": {
+          "type": "number",
+          "default": 4,
+          "description": "Parallel fetches within a single topic or bulk import"
+        },
+        "elashryAi.agent.permissionMode": {
+          "type": "string",
+          "enum": [
+            "strict",
+            "approve",
+            "full"
+          ],
+          "enumDescriptions": [
+            "يسأل على كل حاجة",
+            "ينفّذ الأوامر الآمنة لوحده، يسأل على الباقي، ويرفض الخطر",
+            "ينفّذ كل حاجة من غير سؤال — غير مستحسن"
+          ],
+          "default": "approve",
+          "description": "وضع أذونات الإيجنت (زي approve-for-me في Codex، بس الحكم بقواعد حتمية)."
+        },
+        "elashryAi.model.embedHost": {
+          "type": "string",
+          "default": "",
+          "description": "سيرفر الإمبدنجز (واجهة Ollama /api/embeddings). سيبه فاضي عشان يستخدم نفس model.host. لازم يفضل على المحوّل المحلي (http://localhost:11435) لأن الـ KB مبنية بمتجهاته."
+        },
+        "elashryAi.bus.host": {
+          "type": "string",
+          "default": "",
+          "description": "سيرفر طابور الأوامر الخارجي (يخدم /commands/next). سيبه فاضي = الميزة مقفولة. فاضي هو الصح إلا لو عندك السيرفر ده فعلًا."
+        },
+        "elashryAi.model.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "مفتاح Bearer للسيرفر البعيد. سيبه فاضي للسيرفرات المحلية (OmniRoute والمحوّل بيتجاهلوه)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "pdf-parse": "^2.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  },
+  "__metadata": {
+    "installedTimestamp": 1783582467306,
+    "targetPlatform": "undefined",
+    "size": 61120652
+  }
+}
