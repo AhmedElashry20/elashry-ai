@@ -1,0 +1,9 @@
+{
+  "prompt": "اتأكد إن التدريب شغال وبيتقدّم. لو واقف، شغّله بـ launchctl kickstart -k gui/501/com.elashry.train. لو النبضة قديمة أكتر من 10 دقايق والعملية شغالة، اقتلها وشغّلها تاني.",
+  "maxRounds": 3,
+  "criteria": [
+    { "type": "command", "run": "pgrep -f 'train.py --preset nano_cpu' >/dev/null", "expectExit": 0 },
+    { "type": "command", "run": "test $(( $(date +%s) - $(stat -f %m model/checkpoints/.heartbeat) )) -lt 900", "expectExit": 0 },
+    { "type": "file_exists", "path": "model/checkpoints/nano_cpu_last.pt" }
+  ]
+}

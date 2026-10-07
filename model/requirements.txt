@@ -1,0 +1,14 @@
+# === تجهيز البيانات + التوكنيزر (offline، بدون transformers، بدون أي API خارجي) ===
+datasets>=2.19
+tokenizers>=0.19
+tqdm>=4.66
+
+# numpy<2 مهم: نسخة torch المتاحة لماك Intel/x86 (2.2.2) بتكراش مع numpy 2.x
+numpy>=1.24,<2
+
+# === التدريب/التوليد ===
+# torch مش بيتحط من هنا — سطّبه حسب جهازك:
+#   • Colab            : متسطّب أصلاً (GPU + bfloat16) — استخدم preset micro_colab / small_colab
+#   • ماك Apple Silicon: pip install torch   (arm64، الـ mps بيشتغل)
+#   • ماك Intel/x86    : pip install torch   (هيجيب 2.2.2 — شغّل على device=cpu، الـ mps بيكراش)
+#   • ملاحظة          : torch لسه معندهوش wheel لبايثون 3.14 — استخدم بايثون 3.11/3.12/3.13 محليًا

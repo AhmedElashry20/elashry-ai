@@ -1,0 +1,66 @@
+{
+  "name": "elashry-ai",
+  "displayName": "elashry-ai",
+  "description": "مساعد برمجة شخصي بنموذج محلي مبني من الصفر — بدون أي API خارجي",
+  "version": "0.0.1",
+  "publisher": "ahmedelashry",
+  "private": true,
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Machine Learning", "Programming Languages", "Other"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "elashryAi", "title": "elashry-ai", "icon": "media/icon.svg" }
+      ]
+    },
+    "views": {
+      "elashryAi": [
+        { "type": "webview", "id": "elashryAi.chat", "name": "شات" }
+      ]
+    },
+    "commands": [
+      { "command": "elashryAi.openChat", "title": "elashry-ai: افتح الشات" },
+      { "command": "elashryAi.explain", "title": "elashry-ai: اشرح الكود المحدّد" },
+      { "command": "elashryAi.fix", "title": "elashry-ai: صلّح الكود المحدّد" },
+      { "command": "elashryAi.refactor", "title": "elashry-ai: أعد هيكلة الكود المحدّد" }
+    ],
+    "menus": {
+      "editor/context": [
+        { "command": "elashryAi.explain", "when": "editorHasSelection", "group": "elashryAi@1" },
+        { "command": "elashryAi.fix", "when": "editorHasSelection", "group": "elashryAi@2" },
+        { "command": "elashryAi.refactor", "when": "editorHasSelection", "group": "elashryAi@3" }
+      ]
+    },
+    "configuration": {
+      "title": "elashry-ai",
+      "properties": {
+        "elashryAi.pythonPath": {
+          "type": "string",
+          "default": "/Users/ahmedelashry/Desktop/elashry-ai/.venv/bin/python",
+          "description": "مسار بايثون بتاع الـ venv (اللي فيه torch + tokenizers)"
+        },
+        "elashryAi.preset": {
+          "type": "string",
+          "default": "nano_cpu",
+          "description": "اسم الـ preset في model/configs/arch_presets.json"
+        },
+        "elashryAi.maxNewTokens": {
+          "type": "number",
+          "default": 200,
+          "description": "أقصى عدد توكنز للتوليد"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}

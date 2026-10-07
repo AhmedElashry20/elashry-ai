@@ -1,0 +1,7 @@
+{
+  "prompt": "صلّح كل أخطاء TypeScript في extension/src لحد ما البناء يعدّي نضيف. اقرا الملفات الأول بـ read_file، وبعدين استعمل edit_file للتعديلات.",
+  "maxRounds": 6,
+  "criteria": [
+    { "type": "command", "run": "cd extension && npx tsc --noEmit", "expectExit": 0, "timeoutMs": 180000 }
+  ]
+}

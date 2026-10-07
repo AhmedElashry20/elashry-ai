@@ -1,0 +1,174 @@
+{
+  "_about": "Curated HuggingFace training data for the from-scratch elashry-ai code agent. Every dataset is mapped to a concrete agent feature (chat / agent-mode / explain / fix / refactor). DATA downloads only — no pretrained weights, no runtime API. Verified working on `datasets==5.0.0` (parquet + ungated, run with zero setup). Verified 2026-07-25.",
+  "_datasets_v5_note": "datasets>=4 dropped script-based datasets and `trust_remote_code`. Several classic corpora (the-stack, codeparrot/github-code-clean, bigcode/commitpackft, nampdn-ai/tiny-codes) are now either GATED (need a free HF login + accept terms) or script-based (dead). The set below avoids all of that. Gated alternatives are listed under `gated_optional` if you later set an HF token.",
+  "_agent_features": {
+    "chat_workspace": "Chat panel that answers about code with workspace context.",
+    "agent_mode": "One command -> full task (read/edit files, run commands) in an autonomous loop.",
+    "explain": "Code action: explain a selection.",
+    "fix": "Code action: fix a selection.",
+    "refactor": "Code action: refactor a selection."
+  },
+  "prompt_format": {
+    "_why": "Train the model on ONE consistent I/O template so it speaks the agent's protocol. Add these as reserved special tokens in the BPE tokenizer (they count toward vocab_size in arch_presets.json).",
+    "special_tokens": ["<|task|>", "<|context|>", "<|response|>", "<|end|>", "<fim_prefix>", "<fim_suffix>", "<fim_middle>", "<|file|>", "<|lang|>"],
+    "instruction_template": "<|task|> {instruction}\n<|context|> {optional workspace/file snippet}\n<|response|> {code or natural-language answer}<|end|>",
+    "fim_template": "<fim_prefix>{code_before_cursor}<fim_suffix>{code_after_cursor}<fim_middle>{inserted_code}<|end|>",
+    "notes": "TinyStories is trained raw (no template) as a coherence warm-up. Everything else is wrapped in the instruction_template by data_common.format_example()."
+  },
+  "curriculum": [
+    {
+      "stage": 0,
+      "name": "coherence_bootstrap",
+      "why": "A from-scratch nano model must first learn to emit fluent tokens before it can imitate code well.",
+      "datasets": ["roneneldan/TinyStories"],
+      "format": "raw"
+    },
+    {
+      "stage": 1,
+      "name": "code_fundamentals",
+      "why": "Bulk instruction->code (Python-heavy). Teaches syntax, idioms, and command->code mapping. Backbone of chat_workspace + agent_mode.",
+      "datasets": ["jtatman/python-code-dataset-500k", "iamtarun/python_code_instructions_18k_alpaca", "ise-uiuc/Magicoder-Evol-Instruct-110K", "ise-uiuc/Magicoder-OSS-Instruct-75K", "nickrosh/Evol-Instruct-Code-80k-v1", "glaiveai/glaive-code-assistant", "theblackcat102/evol-codealpaca-v1"],
+      "format": "instruction_template",
+      "serves": ["chat_workspace", "agent_mode"]
+    },
+    {
+      "stage": 2,
+      "name": "task_shaping",
+      "why": "Multi-language instructions + edits + explanations mapped onto the agent protocol. This is what makes it behave like OUR agent.",
+      "datasets": ["sahil2801/CodeAlpaca-20k", "m-a-p/CodeFeedback-Filtered-Instruction", "bigcode/self-oss-instruct-sc2-exec-filter-50k", "Maxscha/commitbench", "code-search-net/code_search_net"],
+      "format": "instruction_template",
+      "serves": ["agent_mode", "fix", "refactor", "explain", "chat_workspace"]
+    },
+    {
+      "stage": 3,
+      "name": "cybersecurity",
+      "why": "Defensive security domain data (OWASP, MITRE ATT&CK, NIST, crypto, cloud/devsecops). User's second focus area alongside programming.",
+      "datasets": ["AlicanKiraz0/Cybersecurity-Dataset-Fenrir-v2.0", "Trendyol/Trendyol-Cybersecurity-Instruction-Tuning-Dataset", "CyberNative/Code_Vulnerability_Security_DPO", "AlicanKiraz0/Cybersecurity-Dataset-v1"],
+      "_removed": "hcnote/Cybersecurity-High-Quality-Dataset — أُزيل 2026-07-27: صيني كتير كان بيتسرّب في إجابات الأمن (bilingual). الفورماتر لسه موجود في data_common لو حبيت ترجّعه.",
+      "format": "instruction_template",
+      "serves": ["chat_workspace", "agent_mode"]
+    },
+    {
+      "stage": 4,
+      "name": "arabic",
+      "why": "User wants the model to handle Arabic too (his language). General Arabic (Wikipedia) for language coherence + Arabic instructions. Requires an Arabic-aware tokenizer (vocab bumped to 16384).",
+      "datasets": ["wikimedia/wikipedia", "arbml/CIDAR", "FreedomIntelligence/alpaca-gpt4-arabic"],
+      "format": "raw + instruction_template"
+    },
+    {
+      "stage": "eval",
+      "name": "evaluation",
+      "why": "Measure code-gen quality. NEVER train on these — held out only.",
+      "datasets": ["openai/openai_humaneval", "google-research-datasets/mbpp"]
+    }
+  ],
+  "datasets": {
+    "roneneldan/TinyStories": {
+      "repo_id": "roneneldan/TinyStories",
+      "rows": 2141709,
+      "size": "7.62 GB",
+      "fields": ["text"],
+      "license": "CDLA-Sharing-1.0",
+      "serves": ["coherence_bootstrap"],
+      "map_to_agent": "Not code — bootstraps coherent generation in a tiny model (TinyStories paper). Streamed.",
+      "load": "load_dataset('roneneldan/TinyStories', split='train', streaming=True)"
+    },
+    "jtatman/python-code-dataset-500k": {
+      "repo_id": "jtatman/python-code-dataset-500k",
+      "rows": 559515,
+      "size": "347 MB",
+      "fields": ["instruction", "output", "system"],
+      "license": "MIT",
+      "serves": ["chat_workspace", "agent_mode"],
+      "map_to_agent": "instruction -> output = the main command->code backbone (Python). output holds lots of raw code the model learns from.",
+      "load": "load_dataset('jtatman/python-code-dataset-500k', split='train', streaming=True)"
+    },
+    "iamtarun/python_code_instructions_18k_alpaca": {
+      "repo_id": "iamtarun/python_code_instructions_18k_alpaca",
+      "rows": 18612,
+      "size": "11.4 MB",
+      "fields": ["instruction", "input", "output", "prompt"],
+      "license": "unspecified (check repo card)",
+      "serves": ["agent_mode", "chat_workspace"],
+      "map_to_agent": "Clean alpaca-style instruction(+input) -> output. Small, high-signal command->code.",
+      "load": "load_dataset('iamtarun/python_code_instructions_18k_alpaca', split='train')"
+    },
+    "sahil2801/CodeAlpaca-20k": {
+      "repo_id": "sahil2801/CodeAlpaca-20k",
+      "rows": 20022,
+      "size": "8.06 MB",
+      "fields": ["instruction", "input", "output"],
+      "license": "CC-BY-4.0",
+      "serves": ["agent_mode", "chat_workspace"],
+      "map_to_agent": "instruction(+input) -> output maps directly onto <|task|>/<|context|>/<|response|>. Multi-language command->code.",
+      "load": "load_dataset('sahil2801/CodeAlpaca-20k', split='train')"
+    },
+    "m-a-p/CodeFeedback-Filtered-Instruction": {
+      "repo_id": "m-a-p/CodeFeedback-Filtered-Instruction",
+      "rows": 156526,
+      "size": "371 MB",
+      "fields": ["query", "answer", "resource", "lang"],
+      "languages": ["Python", "SQL", "JavaScript", "Java", "C++", "HTML", "JSX", "PHP", "Ruby", "C#", "Shell", "JSON"],
+      "license": "apache-2.0",
+      "serves": ["agent_mode", "chat_workspace"],
+      "map_to_agent": "query -> answer, filtered/high-quality, MANY languages. Broadens the agent beyond Python. Filter by lang with --languages.",
+      "load": "load_dataset('m-a-p/CodeFeedback-Filtered-Instruction', split='train', streaming=True)"
+    },
+    "bigcode/self-oss-instruct-sc2-exec-filter-50k": {
+      "repo_id": "bigcode/self-oss-instruct-sc2-exec-filter-50k",
+      "rows": 50661,
+      "size": "90.1 MB",
+      "fields": ["seed", "concepts", "instruction", "response", "id"],
+      "license": "ODC-BY",
+      "serves": ["agent_mode", "chat_workspace"],
+      "map_to_agent": "instruction -> response, execution-VALIDATED solutions (higher correctness signal than raw scrapes).",
+      "load": "load_dataset('bigcode/self-oss-instruct-sc2-exec-filter-50k', split='train', streaming=True)"
+    },
+    "Maxscha/commitbench": {
+      "repo_id": "Maxscha/commitbench",
+      "rows": 1664590,
+      "size": "~1.5 GB",
+      "fields": ["hash", "diff", "message", "project", "split", "diff_languages"],
+      "languages": ["Java", "Python", "Go", "JavaScript", "PHP", "Ruby"],
+      "license": "CC BY-NC 4.0 (data) — non-commercial; fine for this personal project",
+      "serves": ["fix", "refactor", "agent_mode"],
+      "map_to_agent": "commit `message` = instruction, `diff` = the change. Teaches the fix/refactor code-actions and agent-mode edits (intent -> diff).",
+      "load": "load_dataset('Maxscha/commitbench', split='train', streaming=True)"
+    },
+    "code-search-net/code_search_net": {
+      "repo_id": "code-search-net/code_search_net",
+      "rows": 2070000,
+      "config_used": "python",
+      "fields": ["func_code_string", "func_documentation_string", "func_name", "language"],
+      "license": "other (per-repo)",
+      "serves": ["explain"],
+      "map_to_agent": "func_code_string -> func_documentation_string = the explain code-action (code in <|context|>, explanation in <|response|>). First shard is slow to stream (~60s).",
+      "load": "load_dataset('code-search-net/code_search_net', 'python', split='train', streaming=True)"
+    },
+    "openai/openai_humaneval": {
+      "repo_id": "openai/openai_humaneval",
+      "rows": 164,
+      "split": "test",
+      "fields": ["task_id", "prompt", "canonical_solution", "test", "entry_point"],
+      "license": "MIT",
+      "serves": ["evaluation"],
+      "map_to_agent": "Held-out pass@k benchmark. NEVER train on it.",
+      "load": "load_dataset('openai/openai_humaneval', split='test')"
+    },
+    "google-research-datasets/mbpp": {
+      "repo_id": "google-research-datasets/mbpp",
+      "rows": 974,
+      "fields": ["task_id", "text", "code", "test_list"],
+      "license": "CC-BY-4.0",
+      "serves": ["evaluation"],
+      "map_to_agent": "974 basic Python problems with tests. Second held-out benchmark. NEVER train on it.",
+      "load": "load_dataset('google-research-datasets/mbpp', split='test')"
+    }
+  },
+  "gated_optional": {
+    "_note": "These are the originally-desired corpora. On datasets v5 they need a FREE HuggingFace account: accept the terms on the dataset page, then `huggingface-cli login` (or set HF_TOKEN). No payment. Add them to the curriculum + a formatter in data_common.py if you opt in.",
+    "nampdn-ai/tiny-codes": "1.6M well-commented multi-lang snippets (reasoning). GATED.",
+    "bigcode/the-stack-smol": "Small sample of The Stack — real raw code files across languages. GATED.",
+    "bigcode/starcoderdata": "Large raw code pretraining corpus. GATED."
+  }
+}

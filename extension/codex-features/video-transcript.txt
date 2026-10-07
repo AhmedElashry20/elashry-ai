@@ -1,0 +1,413 @@
+[00:00] Hi, I'm Katja Gilgizman and I'm on the developer experience team at OpenAI.
+[00:04] I do a lot of front-end work in my day-to-day job,
+[00:07] so in this course I'm sharing what I've learned using codecs to do this.
+[00:11] And it's not about writing code faster, it's really about rethinking the entire way we build
+[00:16] and iterate on front-end applications. In this course, we'll go through the full
+[00:20] agentic front-end workflow from idea to published application. Along the way, we'll learn how to
+[00:25] create the right setup and work in existing code bases and we'll also explore some of the
+[00:30] newer patterns that agentic coding unlocks. Build your most ambitious front-ends with codecs.
+[00:35] No, codecs is OpenAI's agent for coding and other tasks. I'm saying coding and other tasks because
+[00:43] it did start last year as a coding agent, a software engineering agent, and it was widely
+[00:50] adopted by developers, but then as time went on, as the models got better at doing other type of work,
+[00:59] we saw that more and more people were actually using it for something else, for building presentations,
+[01:06] reading spreadsheets, and just doing any kind of tasks that they needed.
+[01:12] And so that's why we kind of merged it with Chajibite, a little, it was actually not that long ago,
+[01:21] just a few weeks ago, so I'm going to talk a little bit more about that. But just taking a step back,
+[01:26] if we think about how things have evolved in terms of working with AI and especially for software
+[01:33] engineering, when we were first using AI in 2024, it was mostly chat, so you would go on
+[01:41] chat GPT or other agents that you could talk to and then just ask questions,
+[01:49] can I answer when you were a software developer, you could copy paste code into your own IDE,
+[01:55] and that's how you would do things. It was already great, but when in 2025 we started using these
+[02:03] kind of tools more for collaboration, it already accelerated the way we worked considerably.
+[02:10] You could use AI directly in your IDE for auto-completion, for example, or just to take on chunks of work.
+[02:20] And it got better and better. Actually, end of 2025, we started delegating more and more tasks
+[02:26] to agents like codecs, but now everyone that I know, everyone at OpenAI and a lot of the people I talk
+[02:34] to are in full delegation mode, which means that they don't even look at the code anymore.
+[02:41] Sometimes they have code reviews and so they will look at what's changed, but it's kind of flipped
+[02:48] around. So now it's not us driving and then calling AI agents when we need them and telling them,
+[02:55] okay, update that file, update this, do this thing. It's really the agent is driving and we're
+[03:01] communicating with it and we're just telling it, okay, this is what I want to do. I trust you, do it.
+[03:08] So it really changed the way we work because that means you don't need to be in the driver's seat anymore.
+[03:13] You can really delegate to a bunch of agents as if you had a team of colleagues that are just
+[03:22] for you. You don't need to do everything yourself. You can delegate most of your work. And I think that's
+[03:30] really exciting. It really changed the way we all work at OpenAI. Productivity has
+[03:37] exploded and it's crazy to think that it's just a few months. Like when we see the evolution of the
+[03:45] codecs app and now it's at GBT apps, users, it's really exponential. And it all started, I would say,
+[03:53] earlier this year when we launched the Core guys desktop app, which we're going to use today.
+[03:58] So if you haven't installed it, I encourage you to install it now. And that plus also the
+[04:06] model is getting better, I would say from GPT 5.5, it was really the real switch. Now we don't use
+[04:16] codecs and chat GPT just for coding. We use it for everything. And at OpenAI we see actually that
+[04:23] go-to-market teams or finance teams are using it even more than software engineers sometimes.
+[04:29] So we really changed the way we work with AI. So that's why we recently merged
+[04:37] chat GPT and codecs because we're seeing that codecs and especially the harness. So what kind of
+[04:45] helps the model decide what to do next, what tools it should use, and how it should behave between
+[04:53] turns. That's what we call the harness. We saw that it was really powerful to take on
+[04:57] agent tasks. And so we wanted people using chat GPT in the web that we're mostly asking questions
+[05:06] to also benefit from the same powerful harness. And so that's why we brought them together. So
+[05:14] now it's one app, it's the chat GPT app, but you still have codecs in that app. So if you download the
+[05:22] chat GPT app today, you can go to, you can just type, let's show you how to do it, but you can just
+[05:29] go to learn.chat GPT.com, download it here, and then you will see the chat GPT app on your laptop.
+[05:36] And for development, you can switch in the chat GPT app to codecs like this. And so the reason
+[05:46] we have those two things is because non-developers kind of got scared, let's say, of using codecs,
+[05:56] because it was showing all the Git branches and all the differences in code when it would do an action.
+[06:03] And so non-developers didn't care about that. And they thought, oh, this is not a tool for me,
+[06:08] this is just a tool for developers. But it's actually the same harness underneath. It's technically the
+[06:14] same tool. It's just that chat GPT work is made for less technical people that don't want to think
+[06:20] about all of these things, that don't want to think about pull requests and code. And the codecs,
+[06:30] the codecs version of the app is more, you know, it's dedicated to developers. So it has a lot of
+[06:37] features that are really helpful for developers. So for this workshop, we're going to be using codecs,
+[06:42] which lives inside the. So if this is your first time using codecs, let me give you a quick tour
+[06:49] of the app. So this is what the app looks like. And when you start talking to it, you might just be
+[06:57] in a chat. So you can ask anything, it's the same thing as if you were using Chaggipty. But when you're
+[07:03] working on a real project on a, you know, coding project, it's good to have a specific project that is
+[07:11] linked to a folder on your device. So what you can do is here, you can add a project and then add
+[07:19] any folder that you want, for example, let's create a new one, it's called example demo. Open that.
+[07:28] And that way, codecs will stay in that folder. Otherwise, it will just use the default folder
+[07:35] that it's using for all the chats. So when you want to make sure that you're building in a specific
+[07:40] folder, this is what you should do. Once you have your project or once you have your conversation ready
+[07:47] to get started, you can just type, you can ask anything. For example, let's do something very simple.
+[07:52] I'm going to switch to low, actually to light reasoning effort for that. And I'm going to say,
+[08:00] can you create a very simple HTML visualization of the weather in Minneapolis today? So we're sending
+[08:18] that in what it's going to do. It's actually using the visualization skill here that is a skill
+[08:27] specifically for building visualization. But then we can turn that into a website and we can run it.
+[08:35] So let's see what happens. Okay, so we have a visualization here. So this is actually a visualization
+[08:47] in the chat. But if I want, I can turn this into a real app, turn this into a React app.
+[09:00] And then we can open it and see how we can use the in-app browser that is directly available in the app.
+[09:20] Okay, so it's created the minimal app. But right now, if I try to open this file, it's just empty because
+[09:31] it's just an HTML file. It's telling us that we can run it with this command. So I can either open
+[09:38] the bottom panel and by the way, by default, this will be hidden, but you can hit command J to open it.
+[09:46] And I can run this command or I can just say, run it to codecs. And so now I can just open this.
+[10:01] And I see it in the in-app browser, then I can interact with it. I can annotate things. I can
+[10:10] open it in the normal browser if I like. But this is the easiest way to iterate with something that
+[10:18] I'm building inside codecs. And then yeah, we're going to talk about all the other features that
+[10:25] you can find in the codecs app, schedule tasks, plugins, sites, the pool request steps, if you're
+[10:35] working with your team. And you can also explore the settings to make sure that you have everything
+[10:43] that you want enabled. A cool thing to do and that most people want to do is to prevent sleep
+[10:50] while codecs is running so that when you're running a task and you're leaving your laptop,
+[10:54] you can let it work and it will continue to task until it's done and your laptop won't shut down.
+[11:01] And if you have any questions, any doubts, you can go to learn.chadgpt.com and you can go to docs
+[11:10] and see everything that you need there. So especially for administration, if you're worried about
+[11:17] security and how codecs and tools permissions, it's all in there. If you want to learn about all
+[11:25] the features that we have, they're also detailed there. So feel free to explore our docs and play
+[11:31] around with the app. And so for that, I am going to start the prompt also now so that we have a chance
+[11:40] to see it run fully. So I'm just going to copy piece this. I'm going to be an extra high for this
+[11:47] because it's a little bit more complicated. And I will run this while I explain the rest. Also,
+[11:55] one thing to note, I didn't mention, but if you see this thing here is the permissions.
+[12:02] I would recommend everyone to be in approve for me mode. What this means is that
+[12:09] codecs will run a separate thread, separate task to analyze if commands are safe or not. And if
+[12:19] they're deemed unsafe, it will ask you for your permission. Otherwise, it will just automatically
+[12:24] approve because you can ask for approval for everything. That means that every time it needs
+[12:29] to run a command to install a library or do anything else, it will just wait for you to approve,
+[12:36] which kind of defeats the purpose because then you need to always be looking at what's going on.
+[12:42] You can also configure a pet. I will show you what that actually will do that now
+[12:48] to kind of track what's going on. But the best experience is to not have to approve unless it's
+[12:58] something that's sensitive and in that case, you can do approve for me. You also have full access,
+[13:04] but full access, I don't recommend using it. It means that it can just do anything without your
+[13:09] approval. And let's say for some reason, it wants to delete a folder or something like that. If you're
+[13:16] in full access, it might just do it as you don't want those things to happen without you knowing.
+[13:20] So that's why I approve for me is kind of the best middle ground. Again, also configure custom
+[13:27] permissions if you want. This is more deterministic, whereas approved for me is really another model,
+[13:34] just figuring out if you can approve or not. And as I mentioned, you can hatch a pet on the
+[13:42] Codex app. So this is what it is. That way I can kind of keep track of what's going on in the app
+[13:48] while I'm talking about something else. You can configure that from the settings here. So you have
+[13:56] pets. You can choose a pet. You can create a pet. You can import a picture of your dog if you want
+[14:02] and have the skill to create pets, create a pet that looks like your dog. Or you can select from
+[14:10] an existing number of pets. And the goal of this is just to be able to do this, be on another app and
+[14:19] see what's going on here. So here we just have one conversation going on. But if you have multiple
+[14:26] conversations, you would see all those conversations being shown here. And then if there's a need to
+[14:32] approve something or if it's done, you can directly see it here. Okay. So let's talk a little bit about
+[14:39] this example. So let's, yeah, that's the one. Wait, I'm going to actually talk the pet for this because
+[14:50] it's kind of defeats the purpose of the experience. So this is an app that is called a year in a day
+[15:01] or I think in the repo I gave it a not name, something like turning worlds or something. You'll see
+[15:08] in the repo the suggested prompt. But the idea was to explore doing something more interactive with
+[15:17] complex CSS animations and different interaction patterns. So here, for example, I'm scrolling
+[15:24] and I'm not scrolling on the page. It's just something that's happening on the website while
+[15:30] I'm scrolling. And I've done variations of these. It's actually pretty cool to add some parallax
+[15:36] effects and have some things scroll into view. And it's actually really hard to do when you're
+[15:43] trying to build this manually. Even if you're a CSS expert doing something like that would take
+[15:50] a really long time. But now that we have CUTX to build all of those things for you to build all of
+[15:56] those 3D objects and these experiences, we can just be creative and do whatever we want. So I
+[16:05] thought why not? So I wanted to show an example that's, you know, a bit original, something that you
+[16:12] wouldn't see everywhere. And I picked this one where you had multiple cities and you can see the
+[16:19] course of the sun here at the bottom. And each city is also a different season. I don't know if
+[16:25] you noticed that, but this is the summer and then we're going into autumn and then winter.
+[16:32] Anyway, I tried to combine multiple concepts in one example. So this is what we're building.
+[16:39] And again, you can take this prompt here or you can change it. You can change the whole concept.
+[16:48] You can change the cities that you want to see. Actually, an easy way to test new things is to
+[16:52] take that prompt but just change the cities and change the different assets that it should create.
+[17:00] But what we're doing here is that we're asking CUTX to build with 3GS,
+[17:08] we are, I called it One Turning World here, a new experience where we have scrolling that
+[17:17] affects what's going on on the screen with 25 states in total. We give it the visual composition,
+[17:25] we give it, I also provided the text that I'm actually using but again, completely optional.
+[17:32] This is just the text that's here. You can also let CUTX come up with itself where very
+[17:39] prescriptive here about the choreography because I wanted you to be able to have an example that
+[17:45] is similar but you can also completely remove this and let it figure it out. It might just take a
+[17:51] little bit more iterations because to get to that initial choreography, I did a few iterations
+[17:57] myself and then I just asked CUTX to summarize all of those prompts into one so that we could
+[18:03] get closer to define our result faster. So this is the first prompt that we're giving.
+[18:10] And then what we're doing is we're first starting with only 3D assets and we're going to do an
+[18:18] iteration later on that is going to be mixing in generated assets with those 3D objects.
+[18:25] So the second turn is going to be about generating sprites to add images on top of all the 3D models.
+[18:33] So if you can, if you see here, those are all 3D models but then like here we have sprites,
+[18:40] I mean, it's kind of obvious which ones are sprites and which ones are 3D objects.
+[18:45] And so we're going to add that in the second turn just to see how we can iterate
+[18:52] very in very targeted sequences and then we're going to use what we call a goal and we're going to let
+[19:01] that run to then fix it, to then fix the animation because it's very hard to get this animation right
+[19:11] on the first try. You'll see the results that you get, I'm going to show you the results that I got.
+[19:17] Hopefully it finishes live, otherwise I have like another example that I run earlier
+[19:22] where we see the kind of animations that it comes up with. Same thing when you add the generated
+[19:29] assets, it's even harder because it needs to figure out how to show them around the globe. It's
+[19:34] actually very hard technically to do. And so when you have a very hard technical problem like this,
+[19:41] you might want Codex to kind of lock in and just iterate again and again until it gets it right.
+[19:48] And so for this we're going to use what we call a goal. So that's why we're building
+[19:55] this in two stages and we have first the initial experience just to see that everything is right,
+[20:01] then we're going to add the scene assets and then we're going to refine the results and that
+[20:06] will proc in our current conversation that's running. It's been running for 10 minutes.
+[20:11] What it's doing is really doing visual QA and that is what is taking most of the time. So it's going to
+[20:17] do a first draft and do a QA pass and then keep iterating until it's actually satisfied with the
+[20:24] results. And I think the reason it's doing this is because in the prompt we do have something that is
+[20:29] quality requirements and we explain we want this to be smooth, we want no globe clipping etc.
+[20:38] Which is like something that it might do naturally. If we like generating this kind of experience out
+[20:45] of the box, it might not think about all the different break points and the fact that the experience
+[20:49] might be clipped at different break points. So in that case it might be helpful to specify, okay,
+[20:54] you have these things to check and make sure at different break points it looks good and we do
+[21:01] add visually inspected actual experience and do not consider the task complete based only on
+[21:08] compilation of source inspection. We do want it to actually look at it and decide if it is good.
+[21:14] So that's why it takes a little while to run because it's doing all of that visual inspection and if
+[21:20] we look at it here actually, oh, it's closed the browser, okay, it's done. I wanted you to
+[21:30] to see what it looked like when it was like clicking around but you could see the little
+[21:34] overlay here but that's what it was doing for a few minutes. At least it says I think it's at
+[21:41] least six minutes where it was just clicking around. So you probably see that if you are following the
+[21:48] long running the same prompt on your own laptop, try to see what's going on, open the browser and
+[21:56] just look at codecs trying to debug things. Okay, it's on here. So let's open it. Let's see.
+[22:03] Oh yeah, I need to. It's not running. It's not a site. So please run this
+[22:10] on a free port. So I do have a lot of different work trees, a lot of different apps running on
+[22:17] the same port. So let's run it so we can see the results. Okay, oh, nice. Okay, actually,
+[22:31] let me open this in the real browser because it might be nicer, not so bad. I mean, the 3D assets are
+[22:41] a little obvious. I don't like the 3D assets that much. So that's why next we're going to ask to
+[22:46] actually add the sprites. Okay, I'm curious to see it's funny because every time I run this,
+[22:54] it's a different result and you might have something very different as well. So let's not waste time.
+[23:00] Let's take the iteration prompt here and send it to the same conversation. And this will take
+[23:13] also a little while to run. So we're not going to wait for the results, but I can show you here
+[23:19] the iteration result from my previous run, which was let me see starting to have a lot of conversations
+[23:30] here. Yearn the iteration. Oh yeah, it's running on 5176. So let's look at this one. So this is the
+[23:46] iteration with the sprites done on my first project that I run earlier. Not this project,
+[23:53] this one is still running. As you can see, it's still very similar though. It's just the different
+[23:58] variations every time. And so here it added the sprites, but as you can see, the animations are a
+[24:09] little weird. The sprites are fading in the middle of the globe. You can tell it's not as polished as
+[24:19] it should be. And so that's what we're going to use the goal for. So goals are essentially a way
+[24:28] to keep codecs focused on an outcome. You can give a prompt, give codecs instructions on what to do,
+[24:37] and then give acceptance criteria so that codecs knows when it should stop. You can also steer
+[24:46] codecs while it's working on a goal. So you can run a goal and while it's running it, you can add
+[24:52] things. It's not something that you run and avoid and then you can't touch it anymore. If you see
+[24:56] that it's working on the goal and that it's going in the direction that it shouldn't go in,
+[25:01] you can steer it, send a new prompt. So when you have longer work, harder work, where you know that it
+[25:09] will need several passes, it's helpful to use goals because sometimes codecs will do a first pass,
+[25:17] then just stop there. Whereas with goals, if you give the stopping criteria, if you just say,
+[25:22] don't stop until this thing is true, it will keep looping in, keep iterating until it can validate
+[25:31] the acceptance criteria. So that's actually very helpful for all kinds of things. It's useful for
+[25:38] front-end work because if you have a visual result that you want to get to, or if you have very specific
+[25:44] things that you want to see in the front-end before it can stop, you can just use goals for that. It
+[25:50] can be helpful also when you have a visual that could actually be something that you can try
+[25:58] with the live website. So if you have a visual thing that codecs should aspire to and you want to say,
+[26:05] okay, this is the final result, just copy that and keep continuing until you have exactly that.
+[26:11] So you can do that with the live link that I shared, but it might take many hours to get there. So
+[26:17] I wouldn't recommend doing it now. But you can use goals for front-end in that way when you have
+[26:28] that very specific criteria that you want to get to. You can also use goals for completely different
+[26:34] things, especially if you have a set of evaluations to check tasks. For example, let's say you're working
+[26:42] on a website that needs to reply to users and you know that to some replies you should say
+[26:51] X things, then you can use that sort of golden set of answers as the acceptance criteria. You can say,
+[27:01] okay, you can do whatever you want. And this is actually a real example from,
+[27:06] I worked on the Docs agents that's on our website. I had a set of examples, a set of questions and
+[27:13] answers and the answers were written by solutions architects. So they had worked on providing the best
+[27:19] answers to these questions. And then I used an LLM to be the judge of whether the answer was good
+[27:28] or not. And by doing this, I could say, okay, so if you take all of this golden set of examples and
+[27:34] you evaluate the answers that you get, I want you to get to 95% of good answers and do whatever you
+[27:43] want. In the meantime, you can update the prompts, you can update the code, like how the sources are
+[27:50] fetched, how the data is updated before you can answer, so that you have all of this range of
+[27:58] things that you can do. But don't stop until you get 97 95% of good answers. And so that goal
+[28:06] ran for 10 hours over 10 hours. I have colleagues that have had calls that run for multiple days,
+[28:15] like a week, sometimes, I don't know what they're doing. So one of them was, I think, rebuilding
+[28:22] doom in native iOS, for example. So once you have that final result that you want to get to,
+[28:30] it's actually very easy for codecs to check its work and to keep iterating until it's done.
+[28:36] So that's what you can use goals for. And in our case, for the goal that we're going to use here,
+[28:43] the stopping criteria is it's kind of a long goal. You don't need to, you don't need to be that thorough,
+[28:52] but it's kind of broad, but it does give some specific things that we want to see. So for example,
+[29:05] these things should be present, these transitions shouldn't remain smooth, etc, etc. So we do have
+[29:13] a set of things that we want to see. And then we're saying, for every viewport, check that the globe
+[29:21] is visible, check that the transitions are good, check that the glob marker is visible, check that,
+[29:32] the behavior of the motion in the keyboard focus is good. So all of these are the acceptance criteria.
+[29:38] So you don't have to have just one very clear acceptance criteria, where it's like,
+[29:44] you need to have 95% of good answers. You can be a little bit more exhaustive, but when you use goals,
+[29:52] codecs will not stop at just, oh, it seems good. It will actually check its work. And if it's not good,
+[29:59] continue on a new loop to improve the results. What we're going to do is we're going to create that
+[30:06] screen shot to component scale, and then we're going to test it with the user insights project,
+[30:15] the blossom view project that we were seeing right before. And that's, so that's the
+[30:24] problem that you can use. But the thing that you should remember here is that skill creator
+[30:31] is really what you should be using every time you want to create a skill. So it's a skill to create a
+[30:36] skill again, meta. So let's try this. So here in the prompt, we're telling it to test it. You don't
+[30:53] need to be in the user insights folder. You can just be at the top level, but we do want the user
+[31:00] insights folder to be in the code base so that it can look at it and infer some things to create
+[31:06] the skill. So since this is running, this is going to take a while, I'm going to show you the finished
+[31:15] results. But basically, the idea is really to whenever you have a skill that you want to create,
+[31:25] use this kill creator skill so that it organizes the skill in the right way. It knows where to put
+[31:32] it, it knows what a skill looks like. So this is the final, wait, let me open this here. This is the
+[31:38] final skill that it created. So this is in another, in the previously run session. As you can see,
+[31:46] it has a name, a description, and just simple guidance on what to do when you provide a screenshot.
+[31:55] I didn't write any of this again. This kill creator, what it did is that it inspected the code of the
+[32:01] existing project, found what were the reusable things in that project. And then I just explained,
+[32:09] okay, I want this kill to implement actual components, actual UI components,
+[32:16] instead of illustrations when I provide a screenshot. So that's what it's describing,
+[32:23] but I didn't have to write all this. It's kind of inferred from my prompt. This is what the skill
+[32:29] should be. And this is how you give guidance to Codex to create all of this components.
+[32:36] So you can try this. We can see the one that's currently running, if I find it. Yeah, it's here.
+[32:44] So it might take a while, but it will do essentially the same thing where it just analyzes the repo
+[32:51] and then creates the final skill. And then once the skill is created, it will install it in the repo.
+[32:58] So just put it in the right place for you to use. You can also use this to create your own
+[33:05] personal skills. So if you have a personal workflow, then not necessarily related to a repo,
+[33:13] you can use kill creator and you can even use plugin creator to create skills and plugins for
+[33:19] yourself. And then Codex, if you ask it to, you can install it at the Codex home level so that you have
+[33:25] it for all of your sessions. So I don't know if you remember, but at the beginning, I was showing
+[33:29] you that you can do this. You can type dollar sign. And when you type dollar sign, you see all of the
+[33:34] skills that are in the repo, but also those that are personal and also the system app skills.
+[33:41] So if you ask Codex to do it, it will install a skill as a personal skill that you can always use.
+[33:48] Here, we could have a generic screenshot to component skill. You know, you could want this for
+[33:55] all your projects, but the reason we're doing it in this repo and it's a skill specific to this repo
+[34:03] is because you can specify, oh, you have the code. So you can actually fetch the right components.
+[34:11] You can have the same design system. You can have the same, you know, building blocks and bits that
+[34:23] you can play with to create the final screenshot. So this is exactly what we did for this
+[34:31] for this part. This is as simple as that. The only difference is that obviously I can't share the code
+[34:40] for this website, but we're going to do the same for the user insights project and it's going to be
+[34:46] exactly the same thing. And so that means that, you know, we have an example that will build
+[34:50] screenshot on the fly and then you can just also provide some background images if you want. You can
+[34:56] ask it to play with composition. All of that you can just describe it when you use the
+[35:03] skill, creative skill and it will include automatically all that guidance in the skill that it creates.
+[35:11] So now let's test it in a real repo. Wait, let me, let me see.
+[35:22] Yeah, I'm going to create a new page on the
+[35:31] conversation that's already done because otherwise we will have to wait for this to complete.
+[35:38] So it was, I'm starting to have a lot of chats. It was
+[35:44] this one. No, this one. I'm not mistaken. Yeah, so this is the conversation where it created skill.
+[35:57] And now I'm going to for kids in a new work tree so that the other conversation can keep on going
+[36:04] locally in my normal get tree. And I'm going to say, so I'm going to add actually here
+[36:15] in a completely separate folder independent app that is a standalone web page that explains
+[36:28] how to use the inside dashboard. And so let's wait for that for a bit. Actually, I'm an extra high.
+[36:42] Might be I'm just to medium P O and I'm missing the screenshots. That's that's what it's missing.
+[36:49] So I'm just going to pause this and I will go I will open the our app. Where is it? Okay, let's open
+[37:01] this here. So we're going to open it in the browser. And we're just going to take a bunch of screenshots
+[37:12] of what we want to add on our new completely independent website. So these are the screenshots.
+[37:25] I need a screenshot for insights because this is the first thing I want to illustrate for audience
+[37:30] growth. So let's add this. And then for geographic users. And I'm going to finish this. Okay, so we'll
+[37:45] let it run for a bit. And we're going to come back to it in a moment just to wrap up on
+[37:53] how you can use this pattern in the future. This is just an example when you want to be able to
+[38:02] create illustrations on the fly using your real product code. So you have instead of having to
+[38:10] take screenshots and making them pretty, you can just give a screenshot and then could export
+[38:14] the rest and transform that into a component. But you can use skills and create a skill with
+[38:20] skill creator for every type of workflow that you do frequently in the repo. So for example,
+[38:27] when you have like data that you need to update, an example for us would be every time that we have
+[38:36] an update on the correct use cases, we actually fetch the analytics data and use that to automatically
+[38:44] update the most popular use cases using the number of views. And there's a calculation that happens,
+[38:51] but it's something that happens automatically because we have turned that into a skill.
+[38:58] When you also have components that you want to generate on the fly pretty much everywhere,
+[39:04] for example, state components, when you want to have empty states or loading states everywhere in your
+[39:14] app, instead of designing these by one by one, you can ask critics to create a skill so that they
+[39:23] all look very similar. And maybe every time you change the icon or maybe every time you generate
+[39:28] a new image assets for that component, but it is standardized so that you don't have to think
+[39:34] about it. And every time you add a new one, it will be created automatically by Codex.
+[39:42] And then the last thing is, you know, everything that your team design, like if you have a design
+[39:49] system, if you have a storybook with existing components, you want to point Codex at that so
+[39:56] that you could automatically generate composite interfaces with this existing design system.
+[40:04] Another variation of that is, for example, like these use cases, you know, how they have like all
+[40:13] of these illustrations, well, these are just bits of illustrations. So we have like the big ones,
+[40:19] and then the smaller ones with text, and then the ones like the cursor here. And then these are
+[40:25] just exported files that are assets in a skill. And then when we need to create a new one,
+[40:32] the skill will be used to just create a new composition with all of these smaller components
+[40:38] and assemble them following some rules so that you can have a final composition that matches
+[40:44] the use cases, but it's generated on the fly essentially. So every time you have like
+[40:52] these components, these illustrations, these things that are, you know, you don't want to block on them,
+[41:00] you don't want someone to think about them or to generate them manually, think about all the building
+[41:06] blocks, all the little bits that are in those bigger ensembles and turn that into a skill,
+[41:14] using the assets folder, using using Scripts if needed, and in the skill, you just specify the
+[41:21] guidance on how to use them. The last thing I wanted to show you is how you can turn this into something
+[41:34] that's always up to date without having to connect to live data sources. Because if you're building
+[41:41] something with Gmail or Slack or whatever tool you use every day, it might get stale quite fast,
+[41:49] and you don't want to connect or ask app for Gmail, you don't want people to really connect through
+[41:58] the external apps. You can leverage plugins, so a way to keep using plugins and keep your app
+[42:07] up to date is to use automations. And so automations are a feature in code X, so if you can find them
+[42:15] in the scheduled tab here, that can run at a certain time, at a certain schedule, you decide if it's
+[42:23] every day, every week, you decide the hour, and it will run automatically. And again, it's just a prompt,
+[42:31] so you can say, you know, every day at eight, every weekday at eight, just do a daily brief of my day,
+[42:39] you can have weekly reviews, you can have any kind of automation that you want, and you can either
+[42:44] create them from here, or if you're in a thread, and you like what's going on in the thread, and you
+[42:50] wanted to run at a certain schedule, you can directly create this automation in the thread. So that's what
+[42:58] we're going to do here. Just waiting for it to finish, okay, wrap it up, to finish whatever it's doing.
+[43:07] Yes, I'm in fast mode. So, and I'm going to prepare my prompt. So I'm just going to say,
+[43:19] can you create an automation in this thread to refatch the data every day at ADM, and then to update
+[43:32] the site with the new data, and redeploy it. So just caveat to that, if it's a public site,
+[43:43] you can't redeploy it through an automation, because you have to validate first that the data that you
+[43:50] have on your site can be shared again. Let's send this, it's working on something else in the background,
+[43:57] but let's see if we can, okay, it wants to finish this class style deployment, but yeah,
+[44:06] actually let me do this in the other one that was already ready.
+[44:20] So that's a way you can create an automation very easily with codecs. It's just you telling
+[44:28] it create an information for me, and it will do it. You can also do it manually, you can also
+[44:34] edit them manually, but in that case, since it's already in a thread, we already have what we want,
+[44:41] so we'll just ask it to configure the automation. And that way every day at age, so in our case,
+[44:47] we have fictional data, so it will always be the same data, but in the case that you have live
+[44:53] connectors that have real data, it will fetch the updated data and then update your mission
+[44:59] neutral dashboard with the new data. Let's take a look at our automation. So here I asked to create
+[45:08] the, I gave all the info in one prompt, it's very simple, just every day at age, and as you can see
+[45:14] here, it's created this automation, so you can open it and see what the automation looks like.
+[45:21] It runs in the existing chat. If you want, you can also have automations that always create a new
+[45:26] chat every day. In this use case, in this example, it doesn't really make sense because you don't want
+[45:32] a new chat every day, you just want to run in the same thread. Let's say you are doing a daily
+[45:37] brief, maybe you don't want the daily brief from yesterday to impact the day brief of today. So in
+[45:43] that case, you might want to run it in a new chat every time. And then you can adjust, you know,
+[45:49] if you don't want to do a daily, but you just want weekdays, you can do that, you can have a custom
+[45:56] interval. So you can edit the automation directly from here. You can also see all of your automations
+[46:04] from the schedule tab here. So you have a sort of overview of everything that is going to run
+[46:10] every day. Okay, it's finally done. So let's open this one. Let's close all of these.
+[46:22] So, so I'm going to open it in Chrome as well. Let's try adding a task.
+[46:33] Prepare workshop very slow today, but you know, that's always something that you can iterate on
+[46:41] and figure out what's going on. My laptop is apparently struggling a bit, but you get the gist.
+[46:49] Okay, we have it. And so here, it's here. It's in to do. And if I refresh that,
+[46:59] I still have it because it's saved in the database. Great. So that's all for building with sites.
+[47:10] So again, very simple way to get started building. You don't need to be an expert in hosting providers.
+[47:18] You don't need to know how to configure external database, how to configure auth. And it's not just
+[47:25] for landing pages or static websites. It's for full fledged apps. You can import third-party services
+[47:32] if you need to. So any kind of site projects that you have that you want to publish quickly,
+[47:39] you can do this with sites. How much of that is included with your subscription? Right now,
+[47:44] sites is in public beta. So you can still use it. It's functional. It's just that we are still adding
+[47:50] features and we're still figuring out pricing. So for now, sites are included and limited in your
+[47:57] subscription starting from plus. Once it becomes generally available and we figure out the pricing,
+[48:07] you will get charged based on your usage of sites. But we can't share the detail pricing. It will
+[48:15] most likely be related to how much storage you're using, etc. So, and also custom domains
+[48:23] will have an extra charge. But it will be very generous limits because part of that will already
+[48:30] be included in your subscription. So if you use pro, you can build more and use more storage and
+[48:35] more things than on plus. But exactly how much it's not entirely decided yet.
+[48:42] This is a little outside the scope of what you'll be covering for the rest of the course. But if
+[48:47] somebody, for example, was going to be developing a companion mobile app to go along with a website,
+[48:53] does Codex have the ability to emulate mobile apps like kind of like a react native type of thing
+[49:00] within a project, which is a separate project. Any guidance there? In relation to sites or is it
+[49:06] completely independent from sites? I think it was just if they were also going to be doing a mobile app
+[49:11] using using codex to generate a mobile app, maybe kind of related to the design system that they're
+[49:16] coming up with for their front end. Yeah, sure. So when you're building a site suite, codex,
+[49:22] it is a repo with normal code. So you can access the code, you can do whatever you want with it. It's
+[49:28] not like tools where you build an app and then you can't really see what's going on behind the scenes
+[49:33] and you can't really see the code, you own the code. So what you can do is ask codex to just look
+[49:39] at this code and then create a companion app for you, especially if you use the react native plugin
+[49:47] or the iOS plugin, actually let's look at them for a second. Building react native apps. So you
+[49:53] have like all of these skills that are just best practices for how to build react native. I think we
+[50:00] have one for Expo as well that also has a tool to connect to Expo. For iOS, we have this very complete
+[50:13] build iOS apps plugin that also uses the Xcode build mcp server so that it can connect to Xcode
+[50:20] and see logs and just be more efficient with the debugging. It also has an iOS similar browser built
+[50:29] in. So you can definitely build mobile apps with codex and you can definitely build mobile apps that
+[50:35] are companion apps for a given app, whether it's built with sites or not. But right now,
+[50:42] sites is for publishing web apps, not for publishing mobile apps. So you will have to go
+[50:47] through the publishing process for the mobile app separately. On the automation side, we still
+[50:53] able to configure the automation to perform certain skills, plugins and actions. Yeah, of course. So
+[51:01] that's how most people use automations. You can run an automation that is just a prompt. But usually
+[51:08] when you run an automation, what you want to do is connect to external apps. So you just
+[51:13] add plugins, for example, archie mail, ad slack, add github, and then prompt code extra created
+[51:20] on an automation that will check something with those apps on a given schedule.
+[51:27] And really it's up to you to decide what you want to do with tomato. But personally, on my
+[51:34] work account, I have many automations I just run every day that just check slack and emails at
+[51:41] different times of the day that.

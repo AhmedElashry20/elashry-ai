@@ -1,0 +1,41 @@
+# ───────── بيئات وتبعيات ─────────
+.venv/
+venv/
+__pycache__/
+*.pyc
+node_modules/
+*.vsix
+
+# ───────── داتا التدريب (جيجابايتات) ─────────
+# train.bin وحده 4.9 جيجا — يتبني من جديد بـ prepare_data.py + add_all_langs.py
+model/data/bin/
+model/data/raw/
+model/data/pipeline_logs/
+
+# ───────── أوزان الموديل ─────────
+# كل checkpoint ~107 ميجا. مش بتترفع — تتبني بالتدريب أو تتنقل يدويًا.
+model/checkpoints/
+*.pt
+*.bin
+*.safetensors
+
+# ───────── نسخ احتياطية ─────────
+# ⚠ backup-0.5.2-* فيها مفتاح مكتوب في الكود — ماينفعش تترفع على ريبو عام
+extension/backup-*/
+*.backup
+*.pre-grow
+
+# ───────── مخرجات البناء ─────────
+extension/out/
+dist/
+
+# ───────── أسرار ─────────
+.env
+.env.*
+*.pem
+*.key
+credentials*.json
+
+# ───────── نظام التشغيل ─────────
+.DS_Store
+*.log

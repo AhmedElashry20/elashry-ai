@@ -1,0 +1,149 @@
+{
+  "_about": "Architecture + training presets for the from-scratch elashry-ai code model. These are REFERENCE shapes derived from real small models on HuggingFace (numbers only) — NOT downloaded weights, NOT a runtime API. You train your own BPE tokenizer and your own weights from scratch. Field names follow nanoGPT so a train.py can read this directly.",
+  "_reference_models_pulled_from_hf": {
+    "EleutherAI/pythia-70m": {
+      "n_layer": 6,
+      "n_embd": 512,
+      "n_head": 8,
+      "intermediate": 2048,
+      "vocab_size": 50304,
+      "block_size": 2048,
+      "rotary_pct": 0.25,
+      "lr": 0.001,
+      "batch_tokens": "2M",
+      "params": "70.4M (18.9M non-embedding)"
+    },
+    "roneneldan/TinyStories-33M": {
+      "arch": "GPT-Neo",
+      "block_size": 512,
+      "tokenizer": "gpt-neo-125M vocab 50257",
+      "lr": 0.0005,
+      "lr_schedule": "constant",
+      "weight_decay": 0.1,
+      "adam_betas": [
+        0.9,
+        0.95
+      ],
+      "grad_accum": 16,
+      "batch": 80,
+      "params": "33M",
+      "trained_on": "roneneldan/TinyStories"
+    },
+    "bigcode/tiny_starcoder_py": {
+      "arch": "GPT-2 + multi-query-attention + fill-in-the-middle",
+      "block_size": 8192,
+      "trained_on": "bigcode/the-stack-dedup (python)",
+      "tokens": "100B",
+      "steps": 50000,
+      "params": "164M"
+    }
+  },
+  "_notes": {
+    "vocab": "vocab_size includes ~16 reserved special tokens for the agent I/O format (see model/data/hf_datasets.json prompt_format). Train the BPE tokenizer to exactly this size.",
+    "param_formula": "≈ 12*n_layer*n_embd^2 (blocks) + vocab_size*n_embd (tied token emb) + block_size*n_embd (learned pos emb).",
+    "head_dim": "n_embd / n_head. Keep it 32 or 64.",
+    "scaling_path": "Iterate on nano_cpu on the laptop until the loss curve + samples look sane, then rerun the SAME data pipeline with micro_colab / small_colab on Colab GPU."
+  },
+  "presets": {
+    "nano_cpu": {
+      "_target": "~7M params — fast laptop iteration (CPU / Apple Silicon MPS). Matches the local ceiling in project notes.",
+      "param_estimate": "≈ 17.9M (12 طبقة، vocab 16384)",
+      "model": {
+        "n_layer": 12,
+        "n_head": 8,
+        "n_embd": 256,
+        "block_size": 256,
+        "vocab_size": 16384,
+        "_vocab_note": "16384 عشان يستوعب كود + إنجليزي + عربي + أمن (كان 8192 لإنجليزي بس). بيكبّر الموديل لـ ~9M.",
+        "dropout": 0.1,
+        "bias": false,
+        "_layer_note": "كبّرناه من 6 لـ 12 في 2026-10-01 بـ grow_model.py — الطبقات الجديدة اتحطت متداخلة بإسقاطات مصفّرة (ممر)، فالـ loss اتحفظ بالظبط والـ 86,380 خطوة مااتضاعتش. التكلفة: التدريب أبطأ ~42%."
+      },
+      "train": {
+        "optimizer": "adamw",
+        "learning_rate": 0.0002,
+        "min_lr": 2e-05,
+        "_lr_note": "خُفّض من 1e-3 لـ 2e-4 (2026-08): الـ LR العالي خلّى الموديل يقفز فوق أحسن نقطة (val 3.176) وماستقرش. الأقل بيخليه يستقر وينزل أكتر.",
+        "lr_schedule": "cosine",
+        "warmup_iters": 200,
+        "max_iters": 20000,
+        "weight_decay": 0.1,
+        "beta1": 0.9,
+        "beta2": 0.95,
+        "grad_clip": 1.0,
+        "batch_size": 16,
+        "gradient_accumulation_steps": 8,
+        "eval_interval": 500,
+        "eval_iters": 100,
+        "device": "cpu",
+        "_device_note": "cpu آمن في كل مكان. على Apple Silicon بـ torch arm64 تقدر تحط 'mps' وتسرّع. متحطهاش mps على ماك Intel/x86 — الـ MPS في نسخة torch المتاحة هناك بيكراش.",
+        "dtype": "float32",
+        "compile": false
+      }
+    },
+    "micro_colab": {
+      "_target": "~34M params — Colab T4/A100 short runs. Where the model starts producing usable code-shaped output.",
+      "param_estimate": "≈ 33.8M",
+      "model": {
+        "n_layer": 8,
+        "n_head": 8,
+        "n_embd": 512,
+        "block_size": 512,
+        "vocab_size": 16384,
+        "dropout": 0.05,
+        "bias": false
+      },
+      "train": {
+        "optimizer": "adamw",
+        "learning_rate": 0.0006,
+        "min_lr": 6e-05,
+        "lr_schedule": "cosine",
+        "warmup_iters": 500,
+        "max_iters": 60000,
+        "weight_decay": 0.1,
+        "beta1": 0.9,
+        "beta2": 0.95,
+        "grad_clip": 1.0,
+        "batch_size": 24,
+        "gradient_accumulation_steps": 20,
+        "eval_interval": 1000,
+        "eval_iters": 200,
+        "device": "cuda",
+        "dtype": "bfloat16",
+        "compile": true
+      }
+    },
+    "small_colab": {
+      "_target": "~50M params — longer Colab A100 runs. Top of the from-scratch personal ceiling; best imitation quality.",
+      "param_estimate": "≈ 50.4M",
+      "model": {
+        "n_layer": 8,
+        "n_head": 10,
+        "n_embd": 640,
+        "block_size": 1024,
+        "vocab_size": 16384,
+        "dropout": 0.0,
+        "bias": false
+      },
+      "train": {
+        "optimizer": "adamw",
+        "learning_rate": 0.0005,
+        "min_lr": 5e-05,
+        "lr_schedule": "cosine",
+        "warmup_iters": 1000,
+        "max_iters": 120000,
+        "weight_decay": 0.1,
+        "beta1": 0.9,
+        "beta2": 0.95,
+        "grad_clip": 1.0,
+        "batch_size": 16,
+        "gradient_accumulation_steps": 32,
+        "eval_interval": 2000,
+        "eval_iters": 200,
+        "device": "cuda",
+        "dtype": "bfloat16",
+        "compile": true
+      }
+    }
+  }
+}
