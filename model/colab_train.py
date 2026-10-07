@@ -1,272 +1,310 @@
 """
-colab_train.py — تدريب نموذج elashry-ai الأكبر (micro ~34M) على GPU مجاني (Colab).
-مكتفي بذاته: بيسحب الداتا + يدرّب توكنيزر + يدرّب النموذج + يولّد عيّنة. صفر API خارجي.
+colab_train.py — تدريب نسخة أكبر من elashry-ai على GPU مجاني (Colab).
 
-الاستخدام على Colab (Runtime → GPU):
-    !pip install -q datasets tokenizers
-    !python colab_train.py
-أو الصق محتواه في خلية. الملف ده نسخة colab من نفس بايبلاين model/scripts.
+الفرق عن التدريب المحلي: الجهاز المحلي بيطلّع ~18M باراميتر وبياخد شهور.
+على T4 تقدر تدرّب **98M** — قريب من الحجم الأمثل لكوربَسك (130M لـ 2.6 مليار توكن).
+
+**متوافق مع إعدادك المحلي:**
+  • بيستخدم **نفس التوكنيزر** (بيتسحب من الريبو) — مش بيعمل واحد جديد.
+    ده معناه إن الـ checkpoint الناتج بيشتغل مع ollama_adapter.py و generate.py
+    وserve.py من غير أي تعديل.
+  • نفس التوكنز الخاصة ونفس قوالب الداتا (من data_common.py).
+  • بيسحب نفس الداتا، بما فيها الـ 88 لغة برمجة.
+
+**بيكمّل من حيث وقف:** Colab بيقطع الجلسة. الـ checkpoint بيتحفظ على Drive كل
+فترة، وتشغيل الدفتر تاني بيكمّل — مش بيبدأ من الصفر.
+
+الاستخدام على Colab:
+    Runtime → Change runtime type → T4 GPU، وبعدين Run all.
 """
 import json
 import math
 import os
-import random
+import subprocess
+import sys
 import time
-from dataclasses import dataclass
 
-import numpy as np
-import torch
-import torch.nn as nn
-from torch.nn import functional as F
-from tokenizers import Tokenizer, decoders, models, pre_tokenizers, trainers
+REPO = "https://github.com/AhmedElashry20/elashry-ai.git"
 
-# ================== إعدادات (عدّلها بحرية) ==================
-OUT = os.environ.get("ELASHRY_OUT", "/content/elashry")   # على Colab. للحفظ الدائم استخدم /content/drive/MyDrive/elashry
-VOCAB_SIZE = 16384
-CAP_PER_DATASET = 20_000_000     # سقف توكنز لكل داتاسِت (المجموع ~100M+)
-TOK_SAMPLE = 20000               # عيّنة تدريب التوكنيزر لكل داتاسِت
-# معمارية micro (~34M)
-N_LAYER, N_HEAD, N_EMBD, BLOCK, DROPOUT = 8, 8, 512, 512, 0.05
-# تدريب
-MAX_ITERS, WARMUP, LR, MIN_LR = 8000, 300, 6e-4, 6e-5
-BATCH, GRAD_ACCUM, WD, GRAD_CLIP = 24, 8, 0.1, 1.0
-EVAL_INTERVAL, EVAL_ITERS = 500, 50
+# ═══════════════ إعدادات ═══════════════
+# الحفظ على Drive عشان الجلسة لما تتقطع ماتضيعش. من غير Drive → /content (مؤقت).
+OUT = os.environ.get("ELASHRY_OUT", "/content/drive/MyDrive/elashry")
 
-SPECIAL = ["<|task|>", "<|context|>", "<|response|>", "<|end|>",
-           "<fim_prefix>", "<fim_suffix>", "<fim_middle>", "<|file|>", "<|lang|>"]
-END = "<|end|>"
-DATASETS = [
-    "roneneldan/TinyStories", "jtatman/python-code-dataset-500k",
-    "iamtarun/python_code_instructions_18k_alpaca", "sahil2801/CodeAlpaca-20k",
-    "m-a-p/CodeFeedback-Filtered-Instruction", "bigcode/self-oss-instruct-sc2-exec-filter-50k",
+# معمارية 98M — 12 طبقة × 768. أكبر من المحلي (18M) بـ 5 أضعاف.
+N_LAYER, N_HEAD, N_EMBD, BLOCK, DROPOUT = 12, 12, 768, 512, 0.0
+VOCAB_SIZE = 16384                 # لازم يطابق التوكنيزر الموجود
+
+CAP_PER_SOURCE = 40_000_000        # سقف توكنز لكل مصدر
+STACK_ROWS_PER_LANG = 2000         # ملفات لكل لغة من الـ 88
+
+MAX_ITERS, WARMUP = 30000, 500
+LR, MIN_LR = 3e-4, 3e-5
+BATCH, GRAD_ACCUM = 12, 4          # 12×4×512 = 24,576 توكن لكل خطوة
+WD, GRAD_CLIP = 0.1, 1.0
+EVAL_INTERVAL, EVAL_ITERS = 500, 40
+SAVE_EVERY_MIN = 10                # يحفظ على Drive كل كام دقيقة
+
+STACK = "bigcode/the-stack-smol-xl"
+# مصادر التعليمات — نفس اللي في hf_datasets.json
+INSTRUCT = [
+    "roneneldan/TinyStories",
+    "jtatman/python-code-dataset-500k",
+    "ise-uiuc/Magicoder-Evol-Instruct-110K",
+    "ise-uiuc/Magicoder-OSS-Instruct-75K",
+    "nickrosh/Evol-Instruct-Code-80k-v1",
+    "glaiveai/glaive-code-assistant",
+    "theblackcat102/evol-codealpaca-v1",
+    "m-a-p/CodeFeedback-Filtered-Instruction",
+    "bigcode/self-oss-instruct-sc2-exec-filter-50k",
+    "christopher/rosetta-code",
 ]
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-# ---------- تنسيق الداتا (نفس منطق data_common) ----------
-def pick(ex, keys):
-    for k in keys:
-        v = ex.get(k)
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    return None
+def sh(*cmd):
+    subprocess.run(list(cmd), check=True)
 
 
-def fmt(rid, ex):
-    def instr(t, c, r):
-        return f"<|task|> {t}" + (f"\n<|context|> {c}" if c else "") + f"\n<|response|> {r}{END}"
-    if rid == "roneneldan/TinyStories":
-        t = pick(ex, ["text"]); return f"{t}{END}" if t else None
-    if rid == "jtatman/python-code-dataset-500k":
-        t, o = pick(ex, ["instruction"]), pick(ex, ["output"]); return instr(t, None, o) if t and o else None
-    if rid in ("sahil2801/CodeAlpaca-20k", "iamtarun/python_code_instructions_18k_alpaca"):
-        t, o = pick(ex, ["instruction"]), pick(ex, ["output"]); return instr(t, pick(ex, ["input"]), o) if t and o else None
-    if rid == "m-a-p/CodeFeedback-Filtered-Instruction":
-        t, o = pick(ex, ["query"]), pick(ex, ["answer"]); return instr(t, None, o) if t and o else None
-    if rid == "bigcode/self-oss-instruct-sc2-exec-filter-50k":
-        t, o = pick(ex, ["instruction"]), pick(ex, ["response"]); return instr(t, None, o) if t and o else None
-    return None
-
-
-def stream(rid, limit=None):
-    from datasets import load_dataset
-    ds = load_dataset(rid, split="train", streaming=True)
-    n = 0
-    for ex in ds:
-        yield ex
-        n += 1
-        if limit and n >= limit:
-            break
-
-
-# ---------- توكنيزر ----------
-def train_tokenizer():
-    os.makedirs(OUT, exist_ok=True)
-    path = os.path.join(OUT, "tokenizer.json")
-    if os.path.exists(path):
-        print("توكنيزر موجود، بستخدمه.")
-        return Tokenizer.from_file(path)
-
-    def corpus():
-        for rid in DATASETS:
-            try:
-                for ex in stream(rid, TOK_SAMPLE):
-                    t = fmt(rid, ex)
-                    if t and 8 <= len(t) <= 20000:
-                        yield t
-            except Exception as e:
-                print("skip", rid, e)
-    tok = Tokenizer(models.BPE(unk_token=None))
-    tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
-    tok.decoder = decoders.ByteLevel()
-    tr = trainers.BpeTrainer(vocab_size=VOCAB_SIZE, special_tokens=SPECIAL,
-                             initial_alphabet=pre_tokenizers.ByteLevel.alphabet(), show_progress=True)
-    print("بدرّب التوكنيزر...")
-    tok.train_from_iterator(corpus(), trainer=tr)
-    tok.save(path)
-    print("vocab =", tok.get_vocab_size())
-    return tok
-
-
-# ---------- تجهيز الداتا ----------
-def prepare(tok):
-    os.makedirs(OUT, exist_ok=True)
-    tp, vp = os.path.join(OUT, "train.bin"), os.path.join(OUT, "val.bin")
-    if os.path.exists(tp):
-        print("bins موجودة، بستخدمها.")
-        return
-    rng = random.Random(1337)
-    ft, fv = open(tp, "wb"), open(vp, "wb")
-    total = 0
-    for rid in DATASETS:
-        got, buf = 0, []
+def setup():
+    """بيجيب الريبو (التوكنيزر + القوالب) ويثبّت المكتبات."""
+    if not os.path.isdir("/content/elashry-ai"):
+        sh("git", "clone", "--depth", "1", REPO, "/content/elashry-ai")
+    sys.path.insert(0, "/content/elashry-ai/model/scripts")
+    try:
+        import datasets, tokenizers  # noqa: F401
+    except ImportError:
+        sh(sys.executable, "-m", "pip", "install", "-q", "datasets", "tokenizers")
+    if OUT.startswith("/content/drive"):
         try:
-            for ex in stream(rid):
-                t = fmt(rid, ex)
-                if not t or not (8 <= len(t) <= 100000):
-                    continue
-                buf.append(t)
-                if len(buf) >= 1000:
-                    for e in tok.encode_batch(buf):
-                        arr = np.array(e.ids, dtype=np.uint16)
-                        (fv if rng.random() < 0.005 else ft).write(arr.tobytes())
-                        got += len(e.ids)
-                    buf = []
-                    if got >= CAP_PER_DATASET:
-                        break
+            from google.colab import drive
+            if not os.path.ismount("/content/drive"):
+                drive.mount("/content/drive")
         except Exception as e:
-            print("skip", rid, e)
-        total += got
-        print(f"  {rid}: {got:,} tok")
-    ft.close(); fv.close()
-    print(f"إجمالي ~{total:,} توكن")
+            print(f"⚠️  Drive مش متاح ({e}) — هحفظ على /content (هيضيع لما الجلسة تقفل)")
+            return "/content/elashry_out"
+    os.makedirs(OUT, exist_ok=True)
+    return OUT
 
 
-# ---------- النموذج (نفس model.py) ----------
-@dataclass
-class Cfg:
-    n_layer: int; n_head: int; n_embd: int; block_size: int; vocab_size: int; dropout: float; bias: bool = False
+def build_bins(out_dir, tok):
+    """بيسحب الداتا ويحوّلها لـ train.bin/val.bin. بيتخطاها لو موجودة."""
+    import numpy as np
+    import data_common as dc
+
+    train_p = os.path.join(out_dir, "train.bin")
+    val_p = os.path.join(out_dir, "val.bin")
+    if os.path.exists(train_p) and os.path.getsize(train_p) > 10_000_000:
+        n = os.path.getsize(train_p) // 2
+        print(f"✓ الداتا موجودة ({n/1e6:.0f} مليون توكن) — بتخطّى السحب")
+        return train_p, val_p
+
+    rng = np.random.default_rng(1337)
+    ftr, fva = open(train_p, "wb"), open(val_p, "wb")
+    total = 0
+
+    def emit(text):
+        nonlocal total
+        ids = np.asarray(tok.encode(text).ids, dtype=np.uint16)
+        (fva if rng.random() < 0.005 else ftr).write(ids.tobytes())
+        total += ids.size
+        return ids.size
+
+    for rid in INSTRUCT:
+        got, t0 = 0, time.time()
+        try:
+            for ex in dc.iter_examples(rid):
+                t = dc.format_example(rid, ex)
+                if not t:
+                    continue
+                t = dc.clean_text(t)
+                if 16 <= len(t) <= 60000:
+                    got += emit(t)
+                if got >= CAP_PER_SOURCE:
+                    break
+        except Exception as e:
+            print(f"  ⚠️  {rid}: {type(e).__name__}: {str(e)[:70]}")
+        print(f"  {rid}: {got/1e6:.1f}M توكن ({time.time()-t0:.0f}ث)", flush=True)
+
+    print(f"\n── الـ 88 لغة من {STACK} ──", flush=True)
+    for i, lang in enumerate(dc.STACK_LANGS, 1):
+        got = 0
+        try:
+            for ex in dc.iter_examples(STACK, limit=STACK_ROWS_PER_LANG,
+                                       data_dir=f"data/{lang}"):
+                t = dc.format_example(STACK, ex)
+                if not t:
+                    continue
+                t = dc.clean_text(t)
+                if 16 <= len(t) <= 60000:
+                    got += emit(t)
+        except Exception as e:
+            print(f"  ⚠️  {lang}: {str(e)[:60]}")
+        if i % 10 == 0 or got:
+            print(f"  [{i}/{len(dc.STACK_LANGS)}] {lang}: {got/1e6:.1f}M "
+                  f"| الإجمالي {total/1e6:.0f}M", flush=True)
+
+    ftr.close(); fva.close()
+    print(f"\n✓ الكوربَس: {total/1e6:.0f} مليون توكن")
+    return train_p, val_p
 
 
-class Block(nn.Module):
-    def __init__(s, c):
-        super().__init__()
-        s.ln1 = nn.LayerNorm(c.n_embd); s.ln2 = nn.LayerNorm(c.n_embd)
-        s.attn = nn.Linear(c.n_embd, 3 * c.n_embd, bias=False)
-        s.proj = nn.Linear(c.n_embd, c.n_embd, bias=False)
-        s.fc = nn.Linear(c.n_embd, 4 * c.n_embd, bias=False)
-        s.fc2 = nn.Linear(4 * c.n_embd, c.n_embd, bias=False)
-        s.nh, s.ne, s.drop = c.n_head, c.n_embd, c.dropout
+def main():
+    import numpy as np
+    import torch
+    import torch.nn as nn
+    from torch.nn import functional as F
+    from tokenizers import Tokenizer
 
-    def forward(s, x):
-        B, T, C = x.shape
-        q, k, v = s.attn(s.ln1(x)).split(s.ne, 2)
-        q = q.view(B, T, s.nh, C // s.nh).transpose(1, 2)
-        k = k.view(B, T, s.nh, C // s.nh).transpose(1, 2)
-        v = v.view(B, T, s.nh, C // s.nh).transpose(1, 2)
-        y = F.scaled_dot_product_attention(q, k, v, dropout_p=s.drop if s.training else 0, is_causal=True)
-        x = x + s.proj(y.transpose(1, 2).contiguous().view(B, T, C))
-        x = x + s.fc2(F.gelu(s.fc(s.ln2(x))))
-        return x
+    out = setup()
+    dev = "cuda" if torch.cuda.is_available() else "cpu"
+    if dev == "cpu":
+        print("⚠️  مفيش GPU — Runtime → Change runtime type → T4 GPU")
+    else:
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
 
+    # التوكنيزر الموجود — مش بنعمل واحد جديد عشان التوافق
+    tok_path = "/content/elashry-ai/model/tokenizer/tokenizer.json"
+    tok = Tokenizer.from_file(tok_path)
+    assert tok.get_vocab_size() == VOCAB_SIZE, \
+        f"التوكنيزر {tok.get_vocab_size()} مش {VOCAB_SIZE}"
+    print(f"✓ التوكنيزر من الريبو — مفردات {tok.get_vocab_size()}")
 
-class GPT(nn.Module):
-    def __init__(s, c):
-        super().__init__()
-        s.c = c
-        s.wte = nn.Embedding(c.vocab_size, c.n_embd)
-        s.wpe = nn.Embedding(c.block_size, c.n_embd)
-        s.drop = nn.Dropout(c.dropout)
-        s.h = nn.ModuleList([Block(c) for _ in range(c.n_layer)])
-        s.lnf = nn.LayerNorm(c.n_embd)
-        s.head = nn.Linear(c.n_embd, c.vocab_size, bias=False)
-        s.wte.weight = s.head.weight
-        s.apply(s._init)
+    train_p, val_p = build_bins(out, tok)
+    train = np.memmap(train_p, dtype=np.uint16, mode="r")
+    val = np.memmap(val_p, dtype=np.uint16, mode="r")
+    if len(val) < BLOCK * 2:
+        val = train
+    print(f"train {len(train)/1e6:.0f}M | val {len(val)/1e6:.1f}M توكن")
 
-    def _init(s, m):
-        if isinstance(m, (nn.Linear, nn.Embedding)):
-            nn.init.normal_(m.weight, 0, 0.02)
+    # ───────── الموديل (نفس شكل model.py عشان الـ checkpoint يتوافق) ─────────
+    class Block(nn.Module):
+        def __init__(s):
+            super().__init__()
+            s.ln_1 = nn.LayerNorm(N_EMBD, bias=False)
+            s.ln_2 = nn.LayerNorm(N_EMBD, bias=False)
+            s.attn_c_attn = nn.Linear(N_EMBD, 3 * N_EMBD, bias=False)
+            s.attn_c_proj = nn.Linear(N_EMBD, N_EMBD, bias=False)
+            s.mlp_c_fc = nn.Linear(N_EMBD, 4 * N_EMBD, bias=False)
+            s.mlp_c_proj = nn.Linear(4 * N_EMBD, N_EMBD, bias=False)
 
-    def forward(s, idx, targets=None):
-        B, T = idx.shape
-        pos = torch.arange(T, device=idx.device)
-        x = s.drop(s.wte(idx) + s.wpe(pos))
-        for b in s.h:
-            x = b(x)
-        x = s.lnf(x)
-        logits = s.head(x)
-        loss = None if targets is None else F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
-        return logits, loss
+        def forward(s, x):
+            B, T, C = x.shape
+            q, k, v = s.attn_c_attn(s.ln_1(x)).split(C, dim=2)
+            q = q.view(B, T, N_HEAD, C // N_HEAD).transpose(1, 2)
+            k = k.view(B, T, N_HEAD, C // N_HEAD).transpose(1, 2)
+            v = v.view(B, T, N_HEAD, C // N_HEAD).transpose(1, 2)
+            y = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+            x = x + s.attn_c_proj(y.transpose(1, 2).contiguous().view(B, T, C))
+            h = s.ln_2(x)
+            return x + s.mlp_c_proj(F.gelu(s.mlp_c_fc(h)))
+
+    class GPT(nn.Module):
+        def __init__(s):
+            super().__init__()
+            s.wte = nn.Embedding(VOCAB_SIZE, N_EMBD)
+            s.wpe = nn.Embedding(BLOCK, N_EMBD)
+            s.h = nn.ModuleList([Block() for _ in range(N_LAYER)])
+            s.ln_f = nn.LayerNorm(N_EMBD, bias=False)
+            s.head = nn.Linear(N_EMBD, VOCAB_SIZE, bias=False)
+            s.wte.weight = s.head.weight
+            s.apply(lambda m: nn.init.normal_(m.weight, std=0.02)
+                    if isinstance(m, (nn.Linear, nn.Embedding)) else None)
+
+        def forward(s, idx, targets=None):
+            B, T = idx.shape
+            x = s.wte(idx) + s.wpe(torch.arange(T, device=idx.device))
+            for b in s.h:
+                x = b(x)
+            logits = s.head(s.ln_f(x))
+            loss = None if targets is None else F.cross_entropy(
+                logits.view(-1, VOCAB_SIZE), targets.view(-1))
+            return logits, loss
+
+    model = GPT().to(dev)
+    nparam = sum(p.numel() for p in model.parameters())
+    print(f"الباراميترات: {nparam/1e6:.1f}M")
+
+    opt = torch.optim.AdamW(model.parameters(), lr=LR, betas=(0.9, 0.95), weight_decay=WD)
+    scaler = torch.amp.GradScaler("cuda", enabled=(dev == "cuda"))
+
+    # ───────── استكمال من Drive ─────────
+    ck_path = os.path.join(out, "colab_98m.pt")
+    start_it, best_val = 0, float("inf")
+    if os.path.exists(ck_path):
+        ck = torch.load(ck_path, map_location=dev)
+        model.load_state_dict(ck["model"])
+        opt.load_state_dict(ck["optimizer"])
+        start_it, best_val = ck["iter"] + 1, ck.get("best_val", best_val)
+        print(f"↻ كمّلت من خطوة {start_it} (best_val={best_val:.4f})")
+
+    def batch(data):
+        ix = torch.randint(len(data) - BLOCK - 1, (BATCH,))
+        x = torch.stack([torch.from_numpy(data[i:i+BLOCK].astype(np.int64)) for i in ix])
+        y = torch.stack([torch.from_numpy(data[i+1:i+1+BLOCK].astype(np.int64)) for i in ix])
+        return x.to(dev, non_blocking=True), y.to(dev, non_blocking=True)
+
+    def lr_at(it):
+        if it < WARMUP:
+            return LR * (it + 1) / WARMUP
+        r = (it - WARMUP) / max(1, MAX_ITERS - WARMUP)
+        return MIN_LR + 0.5 * (1 + math.cos(math.pi * min(1.0, r))) * (LR - MIN_LR)
 
     @torch.no_grad()
-    def generate(s, idx, n, temp=0.8, topk=50):
-        for _ in range(n):
-            logits, _ = s(idx[:, -s.c.block_size:])
-            logits = logits[:, -1, :] / temp
-            if topk:
-                v, _ = torch.topk(logits, topk); logits[logits < v[:, [-1]]] = -float("inf")
-            idx = torch.cat([idx, torch.multinomial(F.softmax(logits, -1), 1)], 1)
-        return idx
+    def evaluate():
+        model.eval()
+        out_ = {}
+        for nm, d in (("train", train), ("val", val)):
+            ls = torch.zeros(EVAL_ITERS)
+            for k in range(EVAL_ITERS):
+                with torch.autocast("cuda", dtype=torch.float16, enabled=(dev == "cuda")):
+                    ls[k] = model(*batch(d))[1].item()
+            out_[nm] = ls.mean().item()
+        model.train()
+        return out_
 
+    def save(it, bv):
+        tmp = ck_path + ".tmp"
+        torch.save({"model": model.state_dict(), "optimizer": opt.state_dict(),
+                    "iter": it, "best_val": bv,
+                    "config": {"n_layer": N_LAYER, "n_head": N_HEAD, "n_embd": N_EMBD,
+                               "block_size": BLOCK, "vocab_size": VOCAB_SIZE,
+                               "dropout": DROPOUT, "bias": False},
+                    "preset": "colab_98m"}, tmp)
+        os.replace(tmp, ck_path)
 
-# ---------- تدريب ----------
-def get_batch(data, bs, bl):
-    ix = torch.randint(len(data) - bl, (bs,))
-    x = torch.stack([torch.from_numpy(data[i:i + bl].astype(np.int64)) for i in ix])
-    y = torch.stack([torch.from_numpy(data[i + 1:i + 1 + bl].astype(np.int64)) for i in ix])
-    return x.to(DEVICE), y.to(DEVICE)
-
-
-def lr_at(it):
-    if it < WARMUP:
-        return LR * (it + 1) / WARMUP
-    r = (it - WARMUP) / max(1, MAX_ITERS - WARMUP)
-    return MIN_LR + 0.5 * (1 + math.cos(math.pi * r)) * (LR - MIN_LR)
-
-
-def train():
-    tr = np.memmap(os.path.join(OUT, "train.bin"), dtype=np.uint16, mode="r")
-    va = np.memmap(os.path.join(OUT, "val.bin"), dtype=np.uint16, mode="r")
-    print(f"train {len(tr):,} | val {len(va):,} | device {DEVICE}")
-    model = GPT(Cfg(N_LAYER, N_HEAD, N_EMBD, BLOCK, VOCAB_SIZE, DROPOUT)).to(DEVICE)
-    print(f"params ~{sum(p.numel() for p in model.parameters())/1e6:.1f}M")
-    opt = torch.optim.AdamW(model.parameters(), lr=LR, betas=(0.9, 0.95), weight_decay=WD)
-    best = 1e9
-    t0 = time.time()
-    for it in range(MAX_ITERS):
+    print(f"\nبدأ التدريب: {MAX_ITERS} خطوة × {BATCH*GRAD_ACCUM*BLOCK:,} توكن\n")
+    model.train()
+    t0 = last_save = time.time()
+    for it in range(start_it, MAX_ITERS):
         for g in opt.param_groups:
             g["lr"] = lr_at(it)
         for _ in range(GRAD_ACCUM):
-            x, y = get_batch(tr, BATCH, BLOCK)
-            with torch.autocast(DEVICE, dtype=torch.bfloat16, enabled=DEVICE == "cuda"):
-                _, loss = model(x, y); loss = loss / GRAD_ACCUM
-            loss.backward()
+            with torch.autocast("cuda", dtype=torch.float16, enabled=(dev == "cuda")):
+                loss = model(*batch(train))[1] / GRAD_ACCUM
+            scaler.scale(loss).backward()
+        scaler.unscale_(opt)
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
-        opt.step(); opt.zero_grad(set_to_none=True)
+        scaler.step(opt); scaler.update()
+        opt.zero_grad(set_to_none=True)
+
         if it % EVAL_INTERVAL == 0 or it == MAX_ITERS - 1:
-            model.eval()
-            with torch.no_grad():
-                vl = torch.stack([model(*get_batch(va, BATCH, BLOCK))[1] for _ in range(EVAL_ITERS)]).mean().item()
-            model.train()
-            print(f"iter {it:>5} | val {vl:.4f} | lr {lr_at(it):.2e} | {time.time()-t0:.0f}s")
-            if vl < best:
-                best = vl
-                torch.save({"model": model.state_dict(),
-                            "config": {"n_layer": N_LAYER, "n_head": N_HEAD, "n_embd": N_EMBD,
-                                       "block_size": BLOCK, "vocab_size": VOCAB_SIZE, "dropout": DROPOUT, "bias": False}},
-                           os.path.join(OUT, "micro.pt"))
-    print("أحسن val:", best)
-    return model
+            L = evaluate()
+            dt = time.time() - t0; t0 = time.time()
+            star = ""
+            if L["val"] < best_val:
+                best_val = L["val"]; star = " ✓"
+            print(f"خطوة {it:>6} | train {L['train']:.4f} | val {L['val']:.4f} "
+                  f"| lr {lr_at(it):.2e} | {dt:.0f}ث{star}", flush=True)
+            save(it, best_val); last_save = time.time()
+        elif time.time() - last_save > SAVE_EVERY_MIN * 60:
+            # حفظ دوري — Colab بيقطع الجلسة فجأة
+            save(it, best_val); last_save = time.time()
 
-
-def sample(model, tok, prompt="Write a python function that reverses a string"):
-    ids = tok.encode(f"<|task|> {prompt}\n<|response|> ").ids
-    out = model.generate(torch.tensor([ids], device=DEVICE), 80)
-    print("=" * 50); print(tok.decode(out[0].tolist())); print("=" * 50)
+    print(f"\n✓ خلص. أحسن val = {best_val:.4f}")
+    print(f"  الـ checkpoint: {ck_path}")
+    print("\nللاستخدام محليًا: نزّله وحطه في model/checkpoints/، وبعدين:")
+    print("  .venv/bin/python model/scripts/generate.py --ckpt model/checkpoints/colab_98m.pt \\")
+    print("      --agent --prompt \"def factorial(n):\"")
 
 
 if __name__ == "__main__":
-    tok = train_tokenizer()
-    prepare(tok)
-    model = train()
-    sample(model, tok)
+    main()
