@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>elashry-ai</title>
+<meta name="description" content="مساعد برمجة شخصي في VS Code، وجنبه نموذج لغوي متدرَّب من الصفر على 2.61 مليار توكن و88 لغة برمجة.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><text y='50' font-size='50'>⚙</text></svg>">
+<style>
+  :root {
+    --bg: #0d0f12;
+    --surface: #14171c;
+    --line: #242933;
+    --fg: #e8eaed;
+    --muted: #949aa6;
+    --accent: #e8714a;
+    --green: #4ac08a;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #fbfbfc; --surface: #fff; --line: #e4e6ea;
+      --fg: #16181d; --muted: #666d79;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Tahoma, sans-serif;
+    line-height: 1.75;
+    font-size: 16px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
+  a { color: var(--accent); }
+
+  /* ── الواجهة ── */
+  header { padding: 80px 0 56px; border-bottom: 1px solid var(--line); }
+  h1 {
+    margin: 0 0 12px;
+    font-size: clamp(2.1rem, 7vw, 3.4rem);
+    letter-spacing: -.02em;
+    font-family: var(--mono);
+    font-weight: 600;
+  }
+  .tag { color: var(--muted); font-size: clamp(1rem, 3vw, 1.2rem); margin: 0 0 28px; max-width: 54ch; }
+  .cta { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn {
+    display: inline-block; padding: 10px 20px; border-radius: 9px;
+    text-decoration: none; font-weight: 600; font-size: .95rem;
+    background: var(--accent); color: #fff; border: 1px solid var(--accent);
+  }
+  .btn.ghost { background: transparent; color: var(--fg); border-color: var(--line); }
+  .btn:hover { filter: brightness(1.1); }
+
+  /* ── أقسام ── */
+  section { padding: 52px 0; border-bottom: 1px solid var(--line); }
+  h2 { font-size: 1.35rem; margin: 0 0 6px; letter-spacing: -.01em; }
+  .lede { color: var(--muted); margin: 0 0 26px; }
+
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px 20px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+  .card p { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.65; }
+  .card code { font-family: var(--mono); font-size: .85em; color: var(--accent); }
+
+  /* ── أرقام ── */
+  .stats { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .stat {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 20px; text-align: center;
+  }
+  .stat b { display: block; font-size: 1.6rem; font-family: var(--mono); letter-spacing: -.02em; }
+  .stat span { color: var(--muted); font-size: .82rem; }
+
+  pre {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px 18px; overflow-x: auto;
+    direction: ltr; text-align: left;
+    font-family: var(--mono); font-size: .85rem; line-height: 1.7;
+    margin: 0 0 14px;
+  }
+  pre .c { color: var(--muted); }
+  pre .k { color: var(--green); }
+
+  ul.plain { padding: 0; margin: 0; list-style: none; }
+  ul.plain li {
+    padding: 9px 0; border-bottom: 1px solid var(--line);
+    color: var(--muted); font-size: .93rem;
+  }
+  ul.plain li:last-child { border-bottom: 0; }
+  ul.plain b { color: var(--fg); font-weight: 600; }
+
+  .note {
+    border-right: 3px solid var(--accent);
+    background: var(--surface);
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px; color: var(--muted); font-size: .9rem;
+  }
+  .note b { color: var(--fg); }
+
+  footer { padding: 36px 0 56px; color: var(--muted); font-size: .88rem; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>elashry-ai</h1>
+    <p class="tag">
+      مساعد برمجة شخصي بيشتغل جوه VS&nbsp;Code — وجنبه نموذج لغوي متدرَّب
+      من الصفر، من غير أي أوزان جاهزة.
+    </p>
+    <div class="cta">
+      <a class="btn" href="https://github.com/AhmedElashry20/elashry-ai">الكود على GitHub</a>
+      <a class="btn ghost" href="https://github.com/AhmedElashry20/elashry-ai/blob/main/extension-v0.5.2/INSTALL.md">طريقة التشغيل</a>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>الإكستنشن</h2>
+    <p class="lede">إيجنت بيشتغل على الكود مش بيتكلم عنه بس.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>أدوات حقيقية</h3>
+        <p>بيقرا ويكتب ويعدّل ملفات، بيشغّل أوامر، وبيدوّر في الكود. كل خطوة بتعدية عليك قبل ما تتنفّذ.</p>
+      </div>
+      <div class="card">
+        <h3>مهارات</h3>
+        <p>اكتب <code>$اسم-المهارة</code> في الشات، والإرشادات بتتحقن في البرومبت. ملفات عادية في مشروعك.</p>
+      </div>
+      <div class="card">
+        <h3>أهداف</h3>
+        <p>مش برومبت وخلاص — برومبت <b>+ معايير قبول</b>. الإيجنت بيفضل يلف لحد ما تتحقق.</p>
+      </div>
+      <div class="card">
+        <h3>أذونات</h3>
+        <p>ثلاث أوضاع، والأوامر المدمّرة (<code>rm -rf</code>، <code>sudo</code>، <code>curl | sh</code>) مرفوضة بقواعد ثابتة.</p>
+      </div>
+      <div class="card">
+        <h3>أتمتة</h3>
+        <p>برومبت بيتنفّذ على ميعاد — يومي، أيام الشغل، أو أسبوعي.</p>
+      </div>
+      <div class="card">
+        <h3>محادثات محفوظة</h3>
+        <p>ارجع لأي محادثة قديمة، والسياق بيرجع مع الإيجنت نفسه فيكمّل من حيث وقف.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>الأهداف — الفكرة الأساسية</h2>
+    <p class="lede">المعايير حتمية عن قصد: أوامر لازم ترجع صفر، وملفات لازم تكون موجودة. مش حكم موديل.</p>
+<pre><span class="c">// .elashry/goals/fix-types.json</span>
+{
+  <span class="k">"prompt"</span>: "صلّح أخطاء TypeScript",
+  <span class="k">"maxRounds"</span>: 5,
+  <span class="k">"criteria"</span>: [
+    { <span class="k">"type"</span>: "command", <span class="k">"run"</span>: "npx tsc --noEmit", <span class="k">"expectExit"</span>: 0 }
+  ]
+}</pre>
+    <div class="note">
+      <b>ليه حتمية؟</b> لأن الموديل اللي بيحكم على شغله بنفسه بيقول «خلصت»
+      وهو ما خلّصش. أمر بيرجع صفر مابيكدبش.
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>النموذج</h2>
+    <p class="lede">ترانسفورمر decoder-only. التوكنيزر والأوزان كلها متدرَّبة من الصفر — مفيش أي حاجة جاهزة.</p>
+    <div class="stats">
+      <div class="stat"><b>17.9M</b><span>باراميتر</span></div>
+      <div class="stat"><b>2.61B</b><span>توكن تدريب</span></div>
+      <div class="stat"><b>88</b><span>لغة برمجة</span></div>
+      <div class="stat"><b>16,384</b><span>مفردة BPE</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>التشغيل</h2>
+    <p class="lede">البوابة محليًا، والإكستنشن في VS Code.</p>
+<pre><span class="c"># البوابة — بتوصل مئات المزوّدين من نقطة واحدة</span>
+npm i -g omniroute
+OMNIROUTE_SERVER_HOST=127.0.0.1 omniroute serve
+
+<span class="c"># الإكستنشن</span>
+git clone https://github.com/AhmedElashry20/elashry-ai.git
+cp -R elashry-ai/extension-v0.5.2 \
+   ~/.vscode/extensions/ahmedelashry.elashry-ai-0.5.2</pre>
+    <div class="note">
+      <code style="font-family:var(--mono)">OMNIROUTE_SERVER_HOST=127.0.0.1</code> مش اختياري —
+      السيرفر افتراضيًا بيسمع على كل الشبكة من غير مفتاح.
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>حاجات اتعلمتها من المشروع</h2>
+    <ul class="plain">
+      <li><b>خيوط أقل أسرع</b> — على معالج بيتخنق حراريًا، 4 خيوط طلعت أسرع من 8.</li>
+      <li><b>الحفظ لازم يبقى دوري</b> — الحفظ عند أحسن نتيجة بس ضيّع 9 أيام تدريب.</li>
+      <li><b>التكبير مش بيضيّع التدريب</b> — بإسقاطات مصفّرة، الطبقة الجديدة بتبقى ممر والـ loss مابيتغيرش.</li>
+      <li><b>الحارس ممكن يبقى هو المشكلة</b> — حد زمني ضيّق خلاه يقتل تدريب سليم 7 مرات في يوم.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    مشروع شخصي ·
+    <a href="https://github.com/AhmedElashry20/elashry-ai">GitHub</a> ·
+    رخصة MIT
+  </div>
+</footer>
+
+</body>
+</html>
