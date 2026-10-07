@@ -40,14 +40,14 @@
   },
   "_notes": {
     "vocab": "vocab_size includes ~16 reserved special tokens for the agent I/O format (see model/data/hf_datasets.json prompt_format). Train the BPE tokenizer to exactly this size.",
-    "param_formula": "≈ 12*n_layer*n_embd^2 (blocks) + vocab_size*n_embd (tied token emb) + block_size*n_embd (learned pos emb).",
+    "param_formula": "≈ 12*n_layer*n_embd^2 (البلوكات) + vocab_size*n_embd (جدول الكلمات، مربوط فبيتعد مرة) + block_size*n_embd (المواضع). ⚠ مجموع مداخل ملف الـ checkpoint بيطلع أكبر لأن الجدول المربوط بيتكتب تحت اسمين — استخدم sum(p.numel() for p in model.parameters()) مش مجموع state_dict().values().",
     "head_dim": "n_embd / n_head. Keep it 32 or 64.",
     "scaling_path": "Iterate on nano_cpu on the laptop until the loss curve + samples look sane, then rerun the SAME data pipeline with micro_colab / small_colab on Colab GPU."
   },
   "presets": {
     "nano_cpu": {
-      "_target": "~7M params — fast laptop iteration (CPU / Apple Silicon MPS). Matches the local ceiling in project notes.",
-      "param_estimate": "≈ 17.9M (12 طبقة، vocab 16384)",
+      "_target": "~13.7M params — التدريب المحلي على CPU. كان 7M قبل ما المفردات تكبر لـ16384 (2026-07) والطبقات تتضاعف لـ12 (2026-10).",
+      "param_estimate": "≈ 13.7M (12 طبقة، vocab 16384)",
       "model": {
         "n_layer": 12,
         "n_head": 8,
@@ -114,7 +114,7 @@
       }
     },
     "small_colab": {
-      "_target": "~50M params — longer Colab A100 runs. Top of the from-scratch personal ceiling; best imitation quality.",
+      "_target": "~50M params — حجم متوسط لـ Colab. مش السقف: colab_98m أكبر وبيشتغل على T4 مجاني.",
       "param_estimate": "≈ 50.4M",
       "model": {
         "n_layer": 8,
@@ -143,6 +143,40 @@
         "device": "cuda",
         "dtype": "bfloat16",
         "compile": true
+      }
+    },
+    "colab_98m": {
+      "_target": "~93.8M params — اللي colab_train.py بيدرّبه على T4 مجاني. أقرب حجم للأمثل: كوربَس 2.61 مليار توكن ÷ 20 = ~130M.",
+      "param_estimate": "≈ 93.8M بعد الربط (97.9M لو عدّيت الجدول مرتين)",
+      "model": {
+        "n_layer": 12,
+        "n_head": 12,
+        "n_embd": 768,
+        "block_size": 512,
+        "vocab_size": 16384,
+        "_vocab_note": "نفس توكنيزر nano_cpu عن قصد — عشان الـ checkpoint يشتغل مع ollama_adapter و generate من غير تعديل.",
+        "dropout": 0.0,
+        "bias": false
+      },
+      "train": {
+        "optimizer": "adamw",
+        "learning_rate": 0.0003,
+        "min_lr": 3e-05,
+        "lr_schedule": "cosine",
+        "warmup_iters": 500,
+        "max_iters": 30000,
+        "weight_decay": 0.1,
+        "beta1": 0.9,
+        "beta2": 0.95,
+        "grad_clip": 1.0,
+        "batch_size": 12,
+        "gradient_accumulation_steps": 4,
+        "eval_interval": 500,
+        "eval_iters": 40,
+        "device": "cuda",
+        "dtype": "float16",
+        "_dtype_note": "fp16 مش bf16 — T4 (Turing) مابيدعمش bf16 بالعتاد.",
+        "compile": false
       }
     }
   }
