@@ -44,8 +44,10 @@ fi
 # بنربطه على loopback بس — السيرفر افتراضيًا بيسمع على 0.0.0.0 من غير مفتاح.
 if ! pgrep -f "omniroute serve" >/dev/null; then
   log "OmniRoute مش شغال — بشغّله"
-  OMNIROUTE_SERVER_HOST=127.0.0.1 nohup /usr/local/bin/omniroute serve \
-    >> model/data/pipeline_logs/omniroute.log 2>&1 &
+  OMNIROUTE_SERVER_HOST=127.0.0.1 \
+    /usr/bin/python3 model/scripts/spawn_detached.py \
+    model/data/pipeline_logs/omniroute.log \
+    /usr/local/bin/omniroute serve
 fi
 
 # المحوّل المحلي (11435): الشات بقى على OmniRoute، بس الإمبدنجز لسه محتاجاه.
@@ -54,10 +56,13 @@ fi
 # المستخدم اختار يرجّعه (2026-10-07). خيطين بس عشان التدريب يفضل الأولوية.
 if ! pgrep -f "ollama_adapter.py" >/dev/null; then
   log "المحوّل المحلي مش شغال — بشغّله (للإمبدنجز)"
+  # spawn_detached بيعمل setsid حقيقي. nohup+& و disown مكانوش بيكفوا:
+  # launchd بيقتل كل مجموعة عمليات الـ job لما السكربت يخلص، فالمحوّل كان
+  # بيشتغل ويموت كل 6 دقايق (2026-10-09).
   OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TOKENIZERS_PARALLELISM=false \
-    nohup .venv/bin/python model/scripts/ollama_adapter.py \
-    >> model/data/pipeline_logs/adapter.log 2>&1 &
-  disown 2>/dev/null || true
+    /usr/bin/python3 model/scripts/spawn_detached.py \
+    model/data/pipeline_logs/adapter.log \
+    .venv/bin/python model/scripts/ollama_adapter.py
 fi
 
 # أولوية المعالج: التدريب بياخد نواة واحدة من 4 لأن Chrome/VS Code/Flutter
