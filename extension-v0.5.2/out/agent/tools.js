@@ -136,14 +136,45 @@ exports.TOOL_DEFS = [
         },
     },
 ];
+// مسارات ممنوعة تمامًا — محتواها بيروح لسياق موديل خارجي
+const BLOCKED_PATHS = [
+    /(^|\/)\.ssh(\/|$)/, /(^|\/)\.aws(\/|$)/, /(^|\/)\.gnupg(\/|$)/,
+    /(^|\/)\.config\/gh(\/|$)/, /\/Keychains?(\/|$)/,
+    /(^|\/)id_(rsa|ed25519|ecdsa)(\.pub)?$/, /\.pem$/,
+    /(^|\/)\.netrc$/, /(^|\/)etc\/(passwd|shadow|sudoers)$/,
+];
+
+/**
+ * بيحوّل المسار لمطلق وبيفحصه.
+ * بيرجّع { file, outside, blocked } — المنادي لازم يتصرف فيهم.
+ *
+ * من غير ده أي مسار مطلق أو ../ كان بيعدّي: الإيجنت كان يقدر يقرا
+ * ~/.ssh/id_rsa ويبعته للموديل، أو يكتب بره المشروع (2026-10-15).
+ */
 function resolvePath(ctx, p) {
-    return path.isAbsolute(p) ? p : path.join(ctx.workspaceRoot, p);
+    const raw = String(p ?? '');
+    const file = path.isAbsolute(raw) ? path.normalize(raw)
+                                      : path.resolve(ctx.workspaceRoot, raw);
+    const rel = path.relative(ctx.workspaceRoot, file);
+    const outside = rel.startsWith('..') || path.isAbsolute(rel);
+    const blocked = BLOCKED_PATHS.some(re => re.test(file));
+    return Object.assign(new String(file), { file, outside, blocked });
+}
+
+// بتتنادى من كل أداة ملفات: بترجّع رسالة خطأ لو ممنوع، أو null لو تمام
+function pathGuard(ctx, resolved, action) {
+    if (resolved.blocked)
+        return { content: `مرفوض: ${action} على مسار حساس (${resolved.file}). `
+                        + `المسارات دي محجوبة لأن محتواها بيروح لموديل خارجي.`,
+                 is_error: true };
+    return null;
 }
 function toUri(p) {
     return vscode.Uri.file(p);
 }
 async function readFile(ctx, input) {
     const file = resolvePath(ctx, String(input.path));
+    { const g = pathGuard(ctx, file, 'قراءة/كتابة'); if (g) return g; }
     const bytes = await vscode.workspace.fs.readFile(toUri(file));
     const text = new TextDecoder().decode(bytes);
     const lines = text.split('\n');
@@ -177,6 +208,7 @@ async function applyVisibleWrite(file, newContent) {
 }
 async function writeFile(ctx, input) {
     const file = resolvePath(ctx, String(input.path));
+    { const g = pathGuard(ctx, file, 'قراءة/كتابة'); if (g) return g; }
     const content = String(input.content ?? '');
     const ok = await ctx.confirm('write_file', `Write ${path.relative(ctx.workspaceRoot, file) || file}`, content.slice(0, 400), input);
     if (!ok)
@@ -186,6 +218,7 @@ async function writeFile(ctx, input) {
 }
 async function editFile(ctx, input) {
     const file = resolvePath(ctx, String(input.path));
+    { const g = pathGuard(ctx, file, 'قراءة/كتابة'); if (g) return g; }
     const oldStr = String(input.old_string ?? '');
     const newStr = String(input.new_string ?? '');
     const replaceAll = Boolean(input.replace_all);
@@ -210,6 +243,7 @@ async function editFile(ctx, input) {
 }
 async function listDir(ctx, input) {
     const dir = resolvePath(ctx, String(input.path ?? '.'));
+    { const g = pathGuard(ctx, dir, 'سرد'); if (g) return g; }
     const entries = await vscode.workspace.fs.readDirectory(toUri(dir));
     const lines = entries
         .sort((a, b) => a[0].localeCompare(b[0]))

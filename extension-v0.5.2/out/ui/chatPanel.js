@@ -385,7 +385,8 @@ class ChatViewProvider {
     async confirmTool(toolName, summary, detail, input) {
         const auto = (0, config_1.getAutoApprove)();
         const mode = vscode.workspace.getConfiguration('elashryAi').get('agent.permissionMode', 'approve');
-        const verdict = (0, permissions_1.decide)(mode, toolName, input, auto);
+        const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const verdict = (0, permissions_1.decide)(mode, toolName, input, auto, wsRoot);
         if (verdict === 'allow')
             return true;
         if (verdict === 'deny') {

@@ -289,7 +289,8 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "node test/permissions.test.js && node test/sync.test.js"
   },
   "dependencies": {
     "cheerio": "^1.0.0",
