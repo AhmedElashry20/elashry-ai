@@ -73,6 +73,17 @@ for bp in $(pgrep -f "Chrome Helper"; pgrep -f "Code Helper"; pgrep -x dart; pgr
   renice +10 -p "$bp" >/dev/null 2>&1
 done
 
+# خلص التدريب؟ ماتشغّلوش تاني.
+# من غير ده: train.py بيخرج فورًا لأن مفيش خطوات، الحارس يشوف مفيش عملية
+# فيشغّله، فيحمّل 5 جيجا داتا على الفاضي ويخرج — لوپ كل 5 دقايق للأبد.
+MAXIT=150000
+if grep -q "✓ خلص التدريب" "$ROOT/model/data/pipeline_logs/train.log" 2>/dev/null; then
+  DONE_AT=$(awk '{print $1}' "$HB" 2>/dev/null || echo 0)
+  if [ "${DONE_AT:-0}" -ge $((MAXIT - 10)) ]; then
+    exit 0
+  fi
+fi
+
 pid=$(pgrep -f "train.py --preset nano_cpu" | head -1)
 
 # عملية لسه بادئة = لسه بتحمّل الداتا (1.6 جيجا) والـ checkpoint. ملف النبضة
