@@ -65,6 +65,20 @@ if ! pgrep -f "ollama_adapter.py" >/dev/null; then
     .venv/bin/python model/scripts/ollama_adapter.py
 fi
 
+# بناء الكوربَس الجديد (سقف بالتوكنز + ترجيح) — بيكمّل لو الجهاز نام.
+# بيقف لوحده لما meta.json يتكتب (علامة الخلوص).
+if [ -d "$ROOT/model/data/bin_v2" ] && [ ! -f "$ROOT/model/data/bin_v2/meta.json" ]; then
+  if ! pgrep -f "build_corpus.py" >/dev/null; then
+    if /usr/bin/nslookup huggingface.co >/dev/null 2>&1; then
+      log "بناء الكوربَس مش شغال — بكمّله"
+      HF_HUB_DISABLE_PROGRESS_BARS=1 TOKENIZERS_PARALLELISM=false \
+        /usr/bin/python3 model/scripts/spawn_detached.py \
+        model/data/pipeline_logs/build_corpus.log \
+        .venv/bin/python model/scripts/build_corpus.py --target-tokens 1200
+    fi
+  fi
+fi
+
 # أولوية المعالج: التدريب بياخد نواة واحدة من 4 لأن Chrome/VS Code/Flutter
 # بيزاحموه (الحمل كان 147 على جهاز 8 أنوية). بنخفّض أولويتهم مش بنقفلهم —
 # فلو المستخدم محتاجهم يفضلوا شغالين، بس التدريب يسبقهم في الطابور.
