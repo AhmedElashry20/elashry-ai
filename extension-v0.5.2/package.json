@@ -129,6 +129,10 @@
       {
         "command": "elashryAi.automations.add",
         "title": "Elashry AI: Add Automation"
+      },
+      {
+        "command": "elashryAi.skills.import",
+        "title": "Elashry AI: Import Skill"
       }
     ],
     "menus": {
@@ -290,7 +294,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "tsc --noEmit",
-    "test": "node test/permissions.test.js && node test/sync.test.js"
+    "test": "node test/permissions.test.js && node test/skills.test.js && node test/sync.test.js"
   },
   "dependencies": {
     "cheerio": "^1.0.0",

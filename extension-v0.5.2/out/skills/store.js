@@ -12,6 +12,7 @@ exports.findMentioned = findMentioned;
 exports.buildGuidance = buildGuidance;
 exports.stripMentions = stripMentions;
 exports.writeSkill = writeSkill;
+exports.importSkill = importSkill;
 
 const fs = require("fs");
 const path = require("path");
@@ -119,4 +120,67 @@ function writeSkill(baseDir, name, description, guidance) {
     const file = path.join(dir, 'SKILL.md');
     fs.writeFileSync(file, `---\nname: ${name}\ndescription: ${description}\n---\n\n${guidance}\n`, 'utf8');
     return file;
+}
+
+/**
+ * بيستورد مهارة من ملف Markdown خارجي (Agent Shelf، Claude Code agents،
+ * Cursor rules… أي حاجة بصيغة frontmatter + نص).
+ *
+ * بيتسامح مع الحقول الزيادة (version, category, tags, license) — بياخد
+ * name و description ويحتفظ بالباقي كتعليق مصدر، والنص زي ما هو.
+ *
+ * بيرجّع { file, name, description, extras }.
+ */
+function importSkill(markdown, baseDir, opts = {}) {
+    const text = String(markdown || "");
+    if (!text.trim())
+        throw new Error("الملف فاضي");
+
+    // اقرا كل حقول الترويسة مش name/description بس
+    const extras = {};
+    let name = opts.name || "";
+    let description = "";
+    let body = text;
+    const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text);
+    if (m) {
+        body = text.slice(m[0].length);
+        for (const line of m[1].split(/\r?\n/)) {
+            const kv = /^\s*([A-Za-z_-]+)\s*:\s*(.*)$/.exec(line);
+            if (!kv)
+                continue;
+            const key = kv[1].toLowerCase();
+            const val = kv[2].trim().replace(/^["']|["']$/g, "");
+            if (!val)
+                continue;
+            if (key === "name" && !opts.name)
+                name = val;
+            else if (key === "description")
+                description = val;
+            else
+                extras[key] = val;
+        }
+    }
+
+    // مفيش اسم في الترويسة؟ خده من أول عنوان # أو من اسم الملف
+    if (!name) {
+        const h = /^#\s+(.+)$/m.exec(body);
+        name = (h ? h[1] : opts.fallbackName || "imported-skill").trim();
+    }
+    // الاسم بيتحوّل لصيغة صالحة كاسم مجلد
+    name = name.toLowerCase().replace(/[^a-z0-9-]+/g, "-")
+               .replace(/^-+|-+$/g, "").slice(0, 60) || "imported-skill";
+
+    if (!description) {
+        const firstPara = body.split(/\n\s*\n/).map(x => x.trim())
+                              .find(x => x && !x.startsWith("#"));
+        description = (firstPara || "").replace(/\s+/g, " ").slice(0, 160);
+    }
+
+    // سجّل المصدر عشان تعرف المهارة دي جات منين
+    const meta = Object.entries(extras)
+        .map(([k, v]) => `${k}: ${v}`).join(" · ");
+    const header = meta ? `<!-- مستوردة — ${meta} -->\n\n` : "";
+
+    const file = writeSkill(baseDir, name, description, header + body.trim());
+    return { file, name, description, extras };
 }

@@ -197,6 +197,48 @@ function activate(ctx) {
         if (pick)
             vscode.env.clipboard.writeText(pick.label);
     }),
+    vscode.commands.registerCommand('elashryAi.skills.import', async () => {
+        const store = require('./skills/store');
+        const src = await vscode.window.showQuickPick([
+            { label: 'من الحافظة', detail: 'انسخ Markdown من agentshelf.dev أو أي مصدر، وبعدين اختار ده', id: 'clip' },
+            { label: 'من ملف .md', detail: 'ملف نزّلته', id: 'file' },
+        ], { placeHolder: 'استورد مهارة من فين؟' });
+        if (!src)
+            return;
+        let md = '';
+        if (src.id === 'clip') {
+            md = await vscode.env.clipboard.readText();
+            if (!md.trim())
+                return vscode.window.showWarningMessage('الحافظة فاضية.');
+        }
+        else {
+            const picked = await vscode.window.showOpenDialog({
+                canSelectMany: false, filters: { Markdown: ['md', 'markdown', 'txt'] },
+            });
+            if (!picked?.length)
+                return;
+            md = require('fs').readFileSync(picked[0].fsPath, 'utf8');
+        }
+        const scope = await vscode.window.showQuickPick(
+            ['المشروع ده', 'كل المشاريع (شخصية)'], { placeHolder: 'تتحط فين؟' });
+        if (!scope)
+            return;
+        const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+        const base = scope.startsWith('المشروع') ? store.projectSkillsDir(root)
+                                                 : store.personalSkillsDir();
+        try {
+            const r = store.importSkill(md, base);
+            log(`[skills] استوردت ${r.name} → ${r.file}`);
+            const open = await vscode.window.showInformationMessage(
+                `✓ اتسجّلت كـ $${r.name} — استعملها بكتابة $${r.name} في الشات`,
+                'افتح الملف');
+            if (open === 'افتح الملف')
+                vscode.window.showTextDocument(await vscode.workspace.openTextDocument(r.file));
+        }
+        catch (e) {
+            vscode.window.showErrorMessage(`الاستيراد فشل: ${e?.message ?? e}`);
+        }
+    }),
     vscode.commands.registerCommand('elashryAi.skills.create', async () => {
         const store = require('./skills/store');
         const name = await vscode.window.showInputBox({ prompt: 'اسم المهارة (إنجليزي، من غير مسافات)', validateInput: v => /^[a-z0-9-]+$/i.test(v || '') ? undefined : 'حروف وأرقام و- بس' });
