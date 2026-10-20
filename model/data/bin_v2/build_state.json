@@ -1,0 +1,23 @@
+{
+  "done": {
+    "python:python": 17850716,
+    "instruct:ise-uiuc/Magicoder-Evol-Instruct-110K": 25500347,
+    "instruct:ise-uiuc/Magicoder-OSS-Instruct-75K": 25500455,
+    "instruct:nickrosh/Evol-Instruct-Code-80k-v1": 25500125,
+    "instruct:glaiveai/glaive-code-assistant": 25500105,
+    "instruct:theblackcat102/evol-codealpaca-v1": 25500093,
+    "instruct:m-a-p/CodeFeedback-Filtered-Instruction": 25500187,
+    "instruct:bigcode/self-oss-instruct-sc2-exec-filter-50k": 16823294,
+    "instruct:jtatman/python-code-dataset-500k": 25500027,
+    "web:javascript": 13932923,
+    "web:typescript": 9910144
+  },
+  "tokens": {
+    "python": 17850716,
+    "instruct": 195324633,
+    "web": 23843067,
+    "systems": 9838314
+  },
+  "train": 245649121,
+  "val": 1207609
+}
