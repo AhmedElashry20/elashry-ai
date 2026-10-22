@@ -70,6 +70,17 @@ INSTRUCT = [
 PROSE = ["roneneldan/TinyStories"]
 
 
+def reset_hf_session():
+    """بيقفل جلسة HF الميتة عشان المكتبة تعمل واحدة جديدة. True لو نجح."""
+    try:
+        import huggingface_hub.utils._http as ht
+        ht.close_session()
+        ht.get_session()
+        return True
+    except Exception:
+        return False
+
+
 def load_state(p):
     try:
         with open(p, encoding="utf-8") as f:
@@ -154,31 +165,36 @@ def main():
                     n += ids.size; got += ids.size
                 buf.clear()
 
-            try:
-                for ex in dc.iter_examples(repo, data_dir=data_dir):
-                    t = dc.format_example(repo, ex)
-                    if not t:
+            # بنعيد المحاولة على نفس المصدر بعد تجديد الجلسة. من غير ده
+            # المصدر اللي بيقع في النص بيتسجّل "خلص" بنص حصته.
+            for attempt in range(3):
+                try:
+                    for ex in dc.iter_examples(repo, data_dir=data_dir):
+                        t = dc.format_example(repo, ex)
+                        if not t:
+                            continue
+                        t = dc.clean_text(t)
+                        if not (args.min_chars <= len(t) <= args.max_chars):
+                            continue
+                        buf.append(t)
+                        if len(buf) >= 100:
+                            flush()
+                            if n >= cap or got >= budget:
+                                break
+                    flush()
+                    break                      # خلص من غير خطأ
+                except Exception as e:
+                    flush()
+                    net = "client has been closed" in str(e) or "Connection" in str(e)
+                    print(f"    ⚠️  {src} (محاولة {attempt+1}/3): "
+                          f"{type(e).__name__}: {str(e)[:60]}", flush=True)
+                    if net and attempt < 2 and reset_hf_session():
+                        print("    ↻ جلسة HF اتجددت — بعيد المحاولة", flush=True)
+                        time.sleep(3)
                         continue
-                    t = dc.clean_text(t)
-                    if not (args.min_chars <= len(t) <= args.max_chars):
-                        continue
-                    buf.append(t)
-                    if len(buf) >= 100:
-                        flush()
-                        if n >= cap or got >= budget:
-                            break
-                flush()
-            except Exception as e:
-                flush()
-                print(f"    ⚠️  {src}: {type(e).__name__}: {str(e)[:70]}", flush=True)
-                if "client has been closed" in str(e):
-                    ftr.close(); fva.close()
-                    st["tokens"][group] = got
-                    save_state(state_p, st)
-                    print("    ↻ العميل اتقفل — شغّله تاني يكمّل", flush=True)
-                    return "restart"
-            finally:
-                ftr.close(); fva.close()
+                    break
+            ftr.close(); fva.close()
+
 
             if n > 0:
                 st["done"][key] = n

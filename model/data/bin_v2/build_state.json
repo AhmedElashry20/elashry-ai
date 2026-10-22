@@ -10,14 +10,24 @@
     "instruct:bigcode/self-oss-instruct-sc2-exec-filter-50k": 16823294,
     "instruct:jtatman/python-code-dataset-500k": 25500027,
     "web:javascript": 13932923,
-    "web:typescript": 9910144
+    "web:typescript": 9910144,
+    "systems:java": 14401846,
+    "systems:c": 24015141,
+    "systems:c++": 24000737,
+    "systems:go": 22354104,
+    "systems:rust": 23325986,
+    "systems:c-sharp": 11820782,
+    "scripting:shell": 8006523,
+    "scripting:sql": 18030822,
+    "scripting:html": 21021242
   },
   "tokens": {
     "python": 17850716,
     "instruct": 195324633,
     "web": 23843067,
-    "systems": 9838314
+    "systems": 129756910,
+    "scripting": 58333473
   },
-  "train": 245649121,
-  "val": 1207609
+  "train": 423016486,
+  "val": 2092313
 }
